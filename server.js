@@ -159,7 +159,7 @@ app.get("/team/:code", async (req, res) => {
       if (code === "s") {
         try {
           const songRes = await axios.get(
-            "https://www.yakult-swallows.co.jp/assets/json/players/song.json"
+            "https://www.yakult-swallows.co.jp/players/song"
           );
 
           const songs = songRes.data;
