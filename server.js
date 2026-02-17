@@ -179,7 +179,15 @@ app.get("/team/:code", async (req, res) => {
         let songCache = loadCache(`song_${numberInput}.json`);
         if (!songCache) {
           try {
-            const songRes = await axios.get("https://www.yakult-swallows.co.jp/players/song");
+            const songRes = await axios.get(
+  "https://www.yakult-swallows.co.jp/players/song",
+  {
+    headers: {
+      "User-Agent": "Mozilla/5.0"
+    }
+  }
+);
+
             const $$$ = cheerio.load(songRes.data);
             let foundSong = "";
 
