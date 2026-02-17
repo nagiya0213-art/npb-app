@@ -213,6 +213,4 @@ app.get("/team/:code", async (req, res) => {
   res.send(html);
 });
 
-app.listen(PORT, () => {
-  console.log(`サーバー起動: http://localhost:${PORT}`);
-});
+module.exports = app;
