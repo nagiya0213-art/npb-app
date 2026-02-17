@@ -184,46 +184,7 @@ app.get("/team/:code", async (req, res) => {
                  <p><strong>身長・体重:</strong> ${playerDetails.heightWeight}</p>`;
       }
 
-      // ===== ヤクルト応援歌 =====
-      if (code === "s") {
-        let songCache = loadCache(`song_${numberInput}.json`);
-        if (!songCache) {
-          try {
-            const songRes = await axios.get("https://www.yakult-swallows.co.jp/players/song", {
-  headers: {
-    "User-Agent": "Mozilla/5.0",
-    "Accept-Language": "ja-JP,ja;q=0.9"
-  }
-});
-
-            const $$$ = cheerio.load(songRes.data);
-            let foundSong = "";
-
-            $$$(".v-players-song__list-item").each((i, el) => {
-              const li = $$$(el);
-              const nameLink = li.find(".v-players-song__list-name-link").text().trim().replace(/\s/g, "");
-              const targetName = player.name.replace(/\s/g, "");
-              if (nameLink === targetName) {
-                foundSong = li
-                  .find(".v-players-song__phrase-text p")
-                  .map((j, pEl) => $$$(pEl).text().trim())
-                  .get()
-                  .join("\n");
-                return false;
-              }
-            });
-
-            songCache = { lyrics: foundSong };
-            saveCache(`song_${numberInput}.json`, songCache);
-          } catch (err) {
-            songCache = { lyrics: "応援歌取得失敗" };
-          }
-        }
-
-        html += `<hr><h2>応援歌</h2><pre>${songCache.lyrics || "応援歌なし"}</pre>`;
-      }
-    }
-  }
+      
 
   html += "<br><a href='/'>球団選択に戻る</a>";
   res.send(html);
