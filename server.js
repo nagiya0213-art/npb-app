@@ -42,11 +42,10 @@ const teams = {
   e: "東北楽天ゴールデンイーグルス"
 };
 
-// ===== キャッシュ用パス =====
+// ===== キャッシュ =====
 const CACHE_DIR = path.join(__dirname, "cache");
 if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR);
 
-// ===== キャッシュ取得 =====
 function loadCache(file) {
   const filePath = path.join(CACHE_DIR, file);
   if (fs.existsSync(filePath)) {
@@ -64,17 +63,20 @@ function saveCache(file, data) {
 app.get("/", async (req, res) => {
   let html = "";
 
-  // どれか1球団ページから年度取得（年度は全球団共通）
-  const anyTeamCode = Object.keys(teams)[0]; // 例: g
+  const anyTeamCode = Object.keys(teams)[0];
   let yearText = "年度情報なし";
 
   try {
-    const response = await axios.get(`https://npb.jp/bis/teams/rst_${anyTeamCode}.html, {
-  headers: {
-    "User-Agent": "Mozilla/5.0",
-    "Accept-Language": "ja-JP,ja;q=0.9"
-  }
-});
+    const response = await axios.get(
+      `https://npb.jp/bis/teams/rst_${anyTeamCode}.html`,
+      {
+        headers: {
+          "User-Agent": "Mozilla/5.0",
+          "Accept-Language": "ja-JP,ja;q=0.9"
+        }
+      }
+    );
+
     const $ = cheerio.load(response.data);
     const match = $("h1, h2, title").first().text().match(/\d{4}年度/);
     if (match) yearText = match[0];
@@ -92,6 +94,7 @@ app.get("/", async (req, res) => {
   html += "</ul>";
   res.send(html);
 });
+
 // ===== 球団ページ =====
 app.get("/team/:code", async (req, res) => {
   const code = req.params.code;
@@ -105,7 +108,6 @@ app.get("/team/:code", async (req, res) => {
   const now = Date.now();
 
   if (!cacheData || !cacheData.players) {
-    // オンラインでデータ取得
     try {
       const url = `https://npb.jp/bis/teams/rst_${code}.html`;
       const response = await axios.get(url);
@@ -116,6 +118,7 @@ app.get("/team/:code", async (req, res) => {
         const number = $(el).find("td").eq(0).text().trim();
         const name = $(el).find("td").eq(1).text().trim();
         const link = $(el).find("td").eq(1).find("a").attr("href");
+
         if (number && name && link) {
           players.push({
             number,
@@ -126,7 +129,12 @@ app.get("/team/:code", async (req, res) => {
       });
 
       const yearMatch = $("h1, h2, title").first().text().match(/\d{4}年度/);
-      cacheData = { players, year: yearMatch ? yearMatch[0] : "年度情報なし", timestamp: now };
+      cacheData = {
+        players,
+        year: yearMatch ? yearMatch[0] : "年度情報なし",
+        timestamp: now
+      };
+
       saveCache(cacheFile, cacheData);
     } catch (err) {
       if (!cacheData) return res.send("オンライン取得失敗 & キャッシュなし");
@@ -135,18 +143,25 @@ app.get("/team/:code", async (req, res) => {
 
   const { players, year } = cacheData;
 
-  let html = `<meta name="viewport" content="width=device-width, initial-scale=1">
-              <style>body{font-family:sans-serif;padding:10px;}input,button{margin:5px 0;} pre{white-space:pre-wrap;}</style>
-              <h1>${teamName}</h1>
-              <p><strong>${year}</strong></p>
-              <h2>背番号検索</h2>
-              <form method="GET">
-                <input type="number" name="number" placeholder="背番号を入力">
-                <button type="submit">検索</button>
-              </form>`;
+  let html = `
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+      body{font-family:sans-serif;padding:10px;}
+      input,button{margin:5px 0;}
+      pre{white-space:pre-wrap;}
+    </style>
+    <h1>${teamName}</h1>
+    <p><strong>${year}</strong></p>
+    <h2>背番号検索</h2>
+    <form method="GET">
+      <input type="number" name="number" placeholder="背番号を入力">
+      <button type="submit">検索</button>
+    </form>
+  `;
 
   if (numberInput) {
     const player = players.find(p => p.number === numberInput);
+
     if (!player) {
       html += "<p>選手が見つかりません</p>";
     } else {
@@ -154,12 +169,16 @@ app.get("/team/:code", async (req, res) => {
 
       if (!playerDetails) {
         try {
-          const playerRes = await axios.get(player.link {
-  headers: {
-    "User-Agent": "Mozilla/5.0",
-    "Accept-Language": "ja-JP,ja;q=0.9"
-  }
-});
+          const playerRes = await axios.get(
+            player.link,
+            {
+              headers: {
+                "User-Agent": "Mozilla/5.0",
+                "Accept-Language": "ja-JP,ja;q=0.9"
+              }
+            }
+          );
+
           const $$ = cheerio.load(playerRes.data);
 
           const birth = $$("th:contains('生年月日')").next().text().trim();
@@ -175,16 +194,63 @@ app.get("/team/:code", async (req, res) => {
       }
 
       if (playerDetails) {
-        html += `<hr>
-                 <h2>選手詳細</h2>
-                 <p><strong>名前:</strong> ${player.name}</p>
-                 <p><strong>ポジション:</strong> ${playerDetails.position}</p>
-                 <p><strong>生年月日:</strong> ${playerDetails.birth}</p>
-                 <p><strong>年齢:</strong> ${playerDetails.age}歳</p>
-                 <p><strong>身長・体重:</strong> ${playerDetails.heightWeight}</p>`;
+        html += `
+          <hr>
+          <h2>選手詳細</h2>
+          <p><strong>名前:</strong> ${player.name}</p>
+          <p><strong>ポジション:</strong> ${playerDetails.position}</p>
+          <p><strong>生年月日:</strong> ${playerDetails.birth}</p>
+          <p><strong>年齢:</strong> ${playerDetails.age}歳</p>
+          <p><strong>身長・体重:</strong> ${playerDetails.heightWeight}</p>
+        `;
       }
 
-      
+      // ===== ヤクルト応援歌 =====
+      if (code === "s") {
+        let songCache = loadCache(`song_${numberInput}.json`);
+
+        if (!songCache) {
+          try {
+            const songRes = await axios.get(
+              "https://www.yakult-swallows.co.jp/players/song",
+              {
+                headers: {
+                  "User-Agent": "Mozilla/5.0",
+                  "Accept-Language": "ja-JP,ja;q=0.9"
+                }
+              }
+            );
+
+            const $$$ = cheerio.load(songRes.data);
+            let foundSong = "";
+
+            $$$(".v-players-song__list-item").each((i, el) => {
+              const li = $$$(el);
+              const nameLink = li.find(".v-players-song__list-name-link")
+                .text().trim().replace(/\s/g, "");
+              const targetName = player.name.replace(/\s/g, "");
+
+              if (nameLink === targetName) {
+                foundSong = li
+                  .find(".v-players-song__phrase-text p")
+                  .map((j, pEl) => $$$(pEl).text().trim())
+                  .get()
+                  .join("\n");
+                return false;
+              }
+            });
+
+            songCache = { lyrics: foundSong };
+            saveCache(`song_${numberInput}.json`, songCache);
+          } catch (err) {
+            songCache = { lyrics: "応援歌取得失敗" };
+          }
+        }
+
+        html += `<hr><h2>応援歌</h2><pre>${songCache.lyrics || "応援歌なし"}</pre>`;
+      }
+    }
+  }
 
   html += "<br><a href='/'>球団選択に戻る</a>";
   res.send(html);
