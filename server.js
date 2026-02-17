@@ -189,8 +189,9 @@ app.get("/team/:code", async (req, res) => {
           playerDetails = { birth, heightWeight, position, age };
           saveCache(`${code}_${numberInput}.json`, playerDetails);
         } catch (err) {
-          html += "<p>選手詳細取得失敗</p>";
-        }
+  console.log("選手詳細取得失敗:", err.message);
+}
+
       }
 
       if (playerDetails) {
@@ -243,8 +244,10 @@ app.get("/team/:code", async (req, res) => {
             songCache = { lyrics: foundSong };
             saveCache(`song_${numberInput}.json`, songCache);
           } catch (err) {
-            songCache = { lyrics: "応援歌取得失敗" };
-          }
+  console.log("応援歌取得失敗:", err.message);
+  songCache = { lyrics: "" };
+}
+
         }
 
         html += `<hr><h2>応援歌</h2><pre>${songCache.lyrics || "応援歌なし"}</pre>`;
