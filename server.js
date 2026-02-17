@@ -249,6 +249,5 @@ if (code === "s") {
 
   html += "<br><a href='/'>球団選択に戻る</a>";
   res.send(html);
-});
 
 module.exports = app;
