@@ -156,24 +156,32 @@ app.get("/team/:code", async (req, res) => {
       }
 
       // ===== ヤクルト応援歌 =====
+      // ===== ヤクルト応援歌 =====
       if (code === "s") {
-        try {
-          const songRes = await axios.get(
-            "https://www.yakult-swallows.co.jp/players/song"
-          );
+        let songCache = loadCache(`song_${numberInput}.json`);
+        if (!songCache) {
+          try {
+            const songRes = await axios.get("https://www.yakult-swallows.co.jp/players/song");
+            const $$$ = cheerio.load(songRes.data);
+            let foundSong = "";
 
-          const songs = songRes.data;
-          const targetName = player.name.replace(/\s/g, "");
-          let lyrics = "";
+            $$$(".v-players-song__list-item").each((i, el) => {
+              const li = $$$(el);
+              const nameLink = li.find(".v-players-song__list-name-link").text().trim().replace(/\s/g, "");
+              const targetName = player.name.replace(/\s/g, "");
+              if (nameLink === targetName) {
+                foundSong = li
+                  .find(".v-players-song__phrase-text p")
+                  .map((j, pEl) => $$$(pEl).text().trim())
+                  .get()
+                  .join("\n");
+                return false;
+              }
+            });
 
-          songs.forEach(item => {
-            if (item.name.replace(/\s/g, "") === targetName) {
-              lyrics = item.lyrics || "";
-            }
-          });
-
-          html += `<hr><h2>応援歌</h2><pre>${lyrics || "応援歌なし"}</pre>`;
-        } catch (err) {
+            songCache = { lyrics: foundSong };
+            saveCache(`song_${numberInput}.json`, songCache);
+          } catch (err) {
           html += "<p>応援歌取得失敗</p>";
         }
       }
