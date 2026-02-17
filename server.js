@@ -156,7 +156,6 @@ app.get("/team/:code", async (req, res) => {
       }
 
       // ===== ヤクルト応援歌 =====
-      // ===== ヤクルト応援歌 =====
       if (code === "s") {
         let songCache = loadCache(`song_${numberInput}.json`);
         if (!songCache) {
@@ -182,11 +181,16 @@ app.get("/team/:code", async (req, res) => {
             songCache = { lyrics: foundSong };
             saveCache(`song_${numberInput}.json`, songCache);
           } catch (err) {
-          html += "<p>応援歌取得失敗</p>";
+            html += "<p>応援歌取得失敗</p>";
+          }
+        }
+        // キャッシュまたは取得後の歌詞表示
+        if (songCache && songCache.lyrics) {
+          html += `<h3>応援歌</h3><pre>${songCache.lyrics}</pre>`;
         }
       }
-    }
-  }
+    } // else (選手が見つかった場合) の閉じ
+  } // if (numberInput) の閉じ
 
   html += "<br><a href='/'>戻る</a>";
   res.send(html);
