@@ -69,7 +69,12 @@ app.get("/", async (req, res) => {
   let yearText = "年度情報なし";
 
   try {
-    const response = await axios.get(`https://npb.jp/bis/teams/rst_${anyTeamCode}.html`);
+    const response = await axios.get(`https://npb.jp/bis/teams/rst_${anyTeamCode}.html, {
+  headers: {
+    "User-Agent": "Mozilla/5.0",
+    "Accept-Language": "ja-JP,ja;q=0.9"
+  }
+});
     const $ = cheerio.load(response.data);
     const match = $("h1, h2, title").first().text().match(/\d{4}年度/);
     if (match) yearText = match[0];
@@ -149,7 +154,12 @@ app.get("/team/:code", async (req, res) => {
 
       if (!playerDetails) {
         try {
-          const playerRes = await axios.get(player.link);
+          const playerRes = await axios.get(player.link {
+  headers: {
+    "User-Agent": "Mozilla/5.0",
+    "Accept-Language": "ja-JP,ja;q=0.9"
+  }
+});
           const $$ = cheerio.load(playerRes.data);
 
           const birth = $$("th:contains('生年月日')").next().text().trim();
@@ -179,14 +189,12 @@ app.get("/team/:code", async (req, res) => {
         let songCache = loadCache(`song_${numberInput}.json`);
         if (!songCache) {
           try {
-            const songRes = await axios.get(
-  "https://www.yakult-swallows.co.jp/players/song",
-  {
-    headers: {
-      "User-Agent": "Mozilla/5.0"
-    }
+            const songRes = await axios.get("https://www.yakult-swallows.co.jp/players/song", {
+  headers: {
+    "User-Agent": "Mozilla/5.0",
+    "Accept-Language": "ja-JP,ja;q=0.9"
   }
-);
+});
 
             const $$$ = cheerio.load(songRes.data);
             let foundSong = "";
