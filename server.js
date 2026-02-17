@@ -80,6 +80,7 @@ app.get("/", async (req, res) => {
     const $ = cheerio.load(response.data);
     const match = $("h1, h2, title").first().text().match(/\d{4}年度/);
     if (match) yearText = match[0];
+
   } catch (err) {
     yearText = "年度取得失敗";
   }
