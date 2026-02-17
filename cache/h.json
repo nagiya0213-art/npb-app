@@ -1,0 +1,611 @@
+{
+  "players": [
+    {
+      "number": "2",
+      "name": "スチュワート・ジュニア",
+      "link": "https://npb.jp/bis/players/53755138.html"
+    },
+    {
+      "number": "10",
+      "name": "上沢　直之",
+      "link": "https://npb.jp/bis/players/51355135.html"
+    },
+    {
+      "number": "11",
+      "name": "津森　宥紀",
+      "link": "https://npb.jp/bis/players/81285151.html"
+    },
+    {
+      "number": "13",
+      "name": "濵口　遥大",
+      "link": "https://npb.jp/bis/players/51655134.html"
+    },
+    {
+      "number": "14",
+      "name": "又吉　克樹",
+      "link": "https://npb.jp/bis/players/61265139.html"
+    },
+    {
+      "number": "16",
+      "name": "東浜　巨",
+      "link": "https://npb.jp/bis/players/01005137.html"
+    },
+    {
+      "number": "17",
+      "name": "有原　航平",
+      "link": "https://npb.jp/bis/players/51155130.html"
+    },
+    {
+      "number": "18",
+      "name": "武田　翔太",
+      "link": "https://npb.jp/bis/players/01005135.html"
+    },
+    {
+      "number": "20",
+      "name": "村上　泰斗",
+      "link": "https://npb.jp/bis/players/73175150.html"
+    },
+    {
+      "number": "26",
+      "name": "大津　亮介",
+      "link": "https://npb.jp/bis/players/01305157.html"
+    },
+    {
+      "number": "27",
+      "name": "岩井　俊介",
+      "link": "https://npb.jp/bis/players/51355159.html"
+    },
+    {
+      "number": "28",
+      "name": "安德　駿",
+      "link": "https://npb.jp/bis/players/01105150.html"
+    },
+    {
+      "number": "29",
+      "name": "大江　竜聖",
+      "link": "https://npb.jp/bis/players/71375134.html"
+    },
+    {
+      "number": "34",
+      "name": "村田　賢一",
+      "link": "https://npb.jp/bis/players/73375159.html"
+    },
+    {
+      "number": "35",
+      "name": "モイネロ",
+      "link": "https://npb.jp/bis/players/63965134.html"
+    },
+    {
+      "number": "39",
+      "name": "尾形　崇斗",
+      "link": "https://npb.jp/bis/players/61365136.html"
+    },
+    {
+      "number": "40",
+      "name": "杉山　一樹",
+      "link": "https://npb.jp/bis/players/91995138.html"
+    },
+    {
+      "number": "41",
+      "name": "前田　悠伍",
+      "link": "https://npb.jp/bis/players/13115159.html"
+    },
+    {
+      "number": "42",
+      "name": "伊藤　優輔",
+      "link": "https://npb.jp/bis/players/91395153.html"
+    },
+    {
+      "number": "47",
+      "name": "大関　友久",
+      "link": "https://npb.jp/bis/players/01505151.html"
+    },
+    {
+      "number": "48",
+      "name": "藤井　皓哉",
+      "link": "https://npb.jp/bis/players/51655130.html"
+    },
+    {
+      "number": "49",
+      "name": "松本　晴",
+      "link": "https://npb.jp/bis/players/41845157.html"
+    },
+    {
+      "number": "50",
+      "name": "板東　湧梧",
+      "link": "https://npb.jp/bis/players/21425138.html"
+    },
+    {
+      "number": "51",
+      "name": "前田　純",
+      "link": "https://npb.jp/bis/players/71875157.html"
+    },
+    {
+      "number": "53",
+      "name": "大山　凌",
+      "link": "https://npb.jp/bis/players/11515159.html"
+    },
+    {
+      "number": "54",
+      "name": "オスナ",
+      "link": "https://npb.jp/bis/players/13415155.html"
+    },
+    {
+      "number": "56",
+      "name": "田浦　文丸",
+      "link": "https://npb.jp/bis/players/51055136.html"
+    },
+    {
+      "number": "58",
+      "name": "木村　大成",
+      "link": "https://npb.jp/bis/players/71775155.html"
+    },
+    {
+      "number": "59",
+      "name": "長谷川　威展",
+      "link": "https://npb.jp/bis/players/31635155.html"
+    },
+    {
+      "number": "60",
+      "name": "大野　稼頭央",
+      "link": "https://npb.jp/bis/players/21325157.html"
+    },
+    {
+      "number": "63",
+      "name": "ヘルナンデス",
+      "link": "https://npb.jp/bis/players/33435157.html"
+    },
+    {
+      "number": "64",
+      "name": "上茶谷　大河",
+      "link": "https://npb.jp/bis/players/81585138.html"
+    },
+    {
+      "number": "66",
+      "name": "松本　裕樹",
+      "link": "https://npb.jp/bis/players/61665130.html"
+    },
+    {
+      "number": "68",
+      "name": "木村　光",
+      "link": "https://npb.jp/bis/players/41545157.html"
+    },
+    {
+      "number": "69",
+      "name": "岩崎　峻典",
+      "link": "https://npb.jp/bis/players/21325150.html"
+    },
+    {
+      "number": "85",
+      "name": "宮﨑　颯",
+      "link": "https://npb.jp/bis/players/73175157.html"
+    },
+    {
+      "number": "95",
+      "name": "川口　冬弥",
+      "link": "https://npb.jp/bis/players/31735150.html"
+    },
+    {
+      "number": "00",
+      "name": "渡邉　陸",
+      "link": "https://npb.jp/bis/players/93195138.html"
+    },
+    {
+      "number": "12",
+      "name": "嶺井　博希",
+      "link": "https://npb.jp/bis/players/71475139.html"
+    },
+    {
+      "number": "22",
+      "name": "牧原　巧汰",
+      "link": "https://npb.jp/bis/players/33135153.html"
+    },
+    {
+      "number": "45",
+      "name": "谷川原　健太",
+      "link": "https://npb.jp/bis/players/11215132.html"
+    },
+    {
+      "number": "55",
+      "name": "石塚　綜一郎",
+      "link": "https://npb.jp/bis/players/01105151.html"
+    },
+    {
+      "number": "62",
+      "name": "海野　隆司",
+      "link": "https://npb.jp/bis/players/81385151.html"
+    },
+    {
+      "number": "65",
+      "name": "藤田　悠太郎",
+      "link": "https://npb.jp/bis/players/91895159.html"
+    },
+    {
+      "number": "0",
+      "name": "川瀬　晃",
+      "link": "https://npb.jp/bis/players/11715132.html"
+    },
+    {
+      "number": "4",
+      "name": "ダウンズ",
+      "link": "https://npb.jp/bis/players/43245159.html"
+    },
+    {
+      "number": "5",
+      "name": "山川　穂高",
+      "link": "https://npb.jp/bis/players/21425139.html"
+    },
+    {
+      "number": "6",
+      "name": "今宮　健太",
+      "link": "https://npb.jp/bis/players/31335131.html"
+    },
+    {
+      "number": "8",
+      "name": "牧原　大成",
+      "link": "https://npb.jp/bis/players/61465133.html"
+    },
+    {
+      "number": "23",
+      "name": "周東　佑京",
+      "link": "https://npb.jp/bis/players/21925136.html"
+    },
+    {
+      "number": "24",
+      "name": "栗原　陵矢",
+      "link": "https://npb.jp/bis/players/01705130.html"
+    },
+    {
+      "number": "25",
+      "name": "庄子　雄大",
+      "link": "https://npb.jp/bis/players/01205150.html"
+    },
+    {
+      "number": "33",
+      "name": "廣瀨　隆太",
+      "link": "https://npb.jp/bis/players/61665159.html"
+    },
+    {
+      "number": "36",
+      "name": "イヒネ　イツア",
+      "link": "https://npb.jp/bis/players/11315157.html"
+    },
+    {
+      "number": "43",
+      "name": "井上　朋也",
+      "link": "https://npb.jp/bis/players/01305153.html"
+    },
+    {
+      "number": "46",
+      "name": "宇野　真仁朗",
+      "link": "https://npb.jp/bis/players/61365150.html"
+    },
+    {
+      "number": "52",
+      "name": "リチャード",
+      "link": "https://npb.jp/bis/players/11015136.html"
+    },
+    {
+      "number": "52",
+      "name": "秋広　優人",
+      "link": "https://npb.jp/bis/players/71175153.html"
+    },
+    {
+      "number": "67",
+      "name": "石見　颯真",
+      "link": "https://npb.jp/bis/players/81185150.html"
+    },
+    {
+      "number": "99",
+      "name": "野村　勇",
+      "link": "https://npb.jp/bis/players/11615155.html"
+    },
+    {
+      "number": "3",
+      "name": "近藤　健介",
+      "link": "https://npb.jp/bis/players/41745135.html"
+    },
+    {
+      "number": "7",
+      "name": "中村　晃",
+      "link": "https://npb.jp/bis/players/11215116.html"
+    },
+    {
+      "number": "9",
+      "name": "柳田　悠岐",
+      "link": "https://npb.jp/bis/players/31835133.html"
+    },
+    {
+      "number": "30",
+      "name": "佐藤　直樹",
+      "link": "https://npb.jp/bis/players/91095151.html"
+    },
+    {
+      "number": "31",
+      "name": "正木　智也",
+      "link": "https://npb.jp/bis/players/81885155.html"
+    },
+    {
+      "number": "32",
+      "name": "柳町　達",
+      "link": "https://npb.jp/bis/players/73175151.html"
+    },
+    {
+      "number": "44",
+      "name": "笹川　吉康",
+      "link": "https://npb.jp/bis/players/91095153.html"
+    },
+    {
+      "number": "57",
+      "name": "緒方　理貢",
+      "link": "https://npb.jp/bis/players/81585153.html"
+    },
+    {
+      "number": "61",
+      "name": "川村　友斗",
+      "link": "https://npb.jp/bis/players/11715155.html"
+    },
+    {
+      "number": "77",
+      "name": "山本　恵大",
+      "link": "https://npb.jp/bis/players/93595155.html"
+    },
+    {
+      "number": "126",
+      "name": "宮里　優吾",
+      "link": "https://npb.jp/bis/players/13315159.html"
+    },
+    {
+      "number": "128",
+      "name": "河野　伸一朗",
+      "link": "https://npb.jp/bis/players/71775150.html"
+    },
+    {
+      "number": "133",
+      "name": "星野　恒太朗",
+      "link": "https://npb.jp/bis/players/21825159.html"
+    },
+    {
+      "number": "134",
+      "name": "大城　真乃",
+      "link": "https://npb.jp/bis/players/01505153.html"
+    },
+    {
+      "number": "135",
+      "name": "アルメンタ",
+      "link": "https://npb.jp/bis/players/33735155.html"
+    },
+    {
+      "number": "136",
+      "name": "大竹　風雅",
+      "link": "https://npb.jp/bis/players/21325155.html"
+    },
+    {
+      "number": "137",
+      "name": "津嘉山　憲志郎",
+      "link": "https://npb.jp/bis/players/41445150.html"
+    },
+    {
+      "number": "138",
+      "name": "相原　雄太",
+      "link": "https://npb.jp/bis/players/31135150.html"
+    },
+    {
+      "number": "139",
+      "name": "井﨑　燦志郎",
+      "link": "https://npb.jp/bis/players/61165155.html"
+    },
+    {
+      "number": "140",
+      "name": "岡田　皓一朗",
+      "link": "https://npb.jp/bis/players/71575150.html"
+    },
+    {
+      "number": "141",
+      "name": "澤柳　亮太郎",
+      "link": "https://npb.jp/bis/players/91995159.html"
+    },
+    {
+      "number": "142",
+      "name": "藤原　大翔",
+      "link": "https://npb.jp/bis/players/01805159.html"
+    },
+    {
+      "number": "145",
+      "name": "ハモンド",
+      "link": "https://npb.jp/bis/players/41245155.html"
+    },
+    {
+      "number": "146",
+      "name": "藤田　淳平",
+      "link": "https://npb.jp/bis/players/71875159.html"
+    },
+    {
+      "number": "148",
+      "name": "山崎　琢磨",
+      "link": "https://npb.jp/bis/players/13515155.html"
+    },
+    {
+      "number": "149",
+      "name": "熊谷　太雅",
+      "link": "https://npb.jp/bis/players/11915150.html"
+    },
+    {
+      "number": "152",
+      "name": "塩士　暖",
+      "link": "https://npb.jp/bis/players/21025150.html"
+    },
+    {
+      "number": "153",
+      "name": "張　峻ウェイ",
+      "link": "https://npb.jp/bis/players/63565150.html"
+    },
+    {
+      "number": "155",
+      "name": "風間　球打",
+      "link": "https://npb.jp/bis/players/31535155.html"
+    },
+    {
+      "number": "156",
+      "name": "ロドリゲス",
+      "link": "https://npb.jp/bis/players/83285155.html"
+    },
+    {
+      "number": "157",
+      "name": "田上　奏大",
+      "link": "https://npb.jp/bis/players/11415153.html"
+    },
+    {
+      "number": "158",
+      "name": "赤羽　蓮",
+      "link": "https://npb.jp/bis/players/71175157.html"
+    },
+    {
+      "number": "160",
+      "name": "長水　啓眞",
+      "link": "https://npb.jp/bis/players/61465159.html"
+    },
+    {
+      "number": "161",
+      "name": "内野　海斗",
+      "link": "https://npb.jp/bis/players/71375157.html"
+    },
+    {
+      "number": "162",
+      "name": "岡植　純平",
+      "link": "https://npb.jp/bis/players/41345157.html"
+    },
+    {
+      "number": "163",
+      "name": "佐々木　明都",
+      "link": "https://npb.jp/bis/players/11915157.html"
+    },
+    {
+      "number": "164",
+      "name": "水口　創太",
+      "link": "https://npb.jp/bis/players/33135157.html"
+    },
+    {
+      "number": "169",
+      "name": "飛田　悠成",
+      "link": "https://npb.jp/bis/players/31235157.html"
+    },
+    {
+      "number": "176",
+      "name": "サルディ",
+      "link": "https://npb.jp/bis/players/03705159.html"
+    },
+    {
+      "number": "125",
+      "name": "大友　宗",
+      "link": "https://npb.jp/bis/players/51555150.html"
+    },
+    {
+      "number": "151",
+      "name": "加藤　晴空",
+      "link": "https://npb.jp/bis/players/91595155.html"
+    },
+    {
+      "number": "171",
+      "name": "盛島　稜大",
+      "link": "https://npb.jp/bis/players/83185157.html"
+    },
+    {
+      "number": "121",
+      "name": "ザイレン",
+      "link": "https://npb.jp/bis/players/01905150.html"
+    },
+    {
+      "number": "122",
+      "name": "藤野　恵音",
+      "link": "https://npb.jp/bis/players/51855155.html"
+    },
+    {
+      "number": "124",
+      "name": "桑原　秀侍",
+      "link": "https://npb.jp/bis/players/01905153.html"
+    },
+    {
+      "number": "127",
+      "name": "広瀬　結煌",
+      "link": "https://npb.jp/bis/players/31835150.html"
+    },
+    {
+      "number": "129",
+      "name": "佐倉　侠史朗",
+      "link": "https://npb.jp/bis/players/31935159.html"
+    },
+    {
+      "number": "130",
+      "name": "勝連　大稀",
+      "link": "https://npb.jp/bis/players/41745151.html"
+    },
+    {
+      "number": "131",
+      "name": "中澤　恒貴",
+      "link": "https://npb.jp/bis/players/01405159.html"
+    },
+    {
+      "number": "159",
+      "name": "山下　恭吾",
+      "link": "https://npb.jp/bis/players/23325157.html"
+    },
+    {
+      "number": "167",
+      "name": "川原田　純平",
+      "link": "https://npb.jp/bis/players/81785153.html"
+    },
+    {
+      "number": "170",
+      "name": "西尾　歩真",
+      "link": "https://npb.jp/bis/players/51455157.html"
+    },
+    {
+      "number": "175",
+      "name": "アルモンテ",
+      "link": "https://npb.jp/bis/players/93595159.html"
+    },
+    {
+      "number": "123",
+      "name": "大泉　周也",
+      "link": "https://npb.jp/bis/players/21325159.html"
+    },
+    {
+      "number": "143",
+      "name": "漁府　輝羽",
+      "link": "https://npb.jp/bis/players/61765150.html"
+    },
+    {
+      "number": "144",
+      "name": "シモン",
+      "link": "https://npb.jp/bis/players/23925155.html"
+    },
+    {
+      "number": "147",
+      "name": "木下　勇人",
+      "link": "https://npb.jp/bis/players/21725150.html"
+    },
+    {
+      "number": "154",
+      "name": "生海",
+      "link": "https://npb.jp/bis/players/21125157.html"
+    },
+    {
+      "number": "166",
+      "name": "重松　凱人",
+      "link": "https://npb.jp/bis/players/71975157.html"
+    },
+    {
+      "number": "168",
+      "name": "佐藤　航太",
+      "link": "https://npb.jp/bis/players/31935157.html"
+    },
+    {
+      "number": "173",
+      "name": "オスーナ",
+      "link": "https://npb.jp/bis/players/53755157.html"
+    }
+  ],
+  "year": "2025年度",
+  "timestamp": 1771303314970
+}
