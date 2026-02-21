@@ -68,21 +68,16 @@ app.get("/", async (req, res) => {
 
     /* --- ソートロジックの修正 --- */
     players.sort((a, b) => {
-      const numA = parseInt(a.number, 10);
-      const numB = parseInt(b.number, 10);
+      // 「012」などは文字列のまま3文字以上なら育成枠（下位）へ送る
+      const isDevA = a.number.length >= 3;
+      const isDevB = b.number.length >= 3;
 
-      // 1. 支配下（二桁以下）か育成（三桁以上）かの判定
-      // ※00番などの特殊なケースも考慮し、文字数ではなく数値100未満かどうかで判定
-      const isDevelopmentA = numA >= 100;
-      const isDevelopmentB = numB >= 100;
-
-      if (isDevelopmentA !== isDevelopmentB) {
-        // 支配下を上に、育成を下に
-        return isDevelopmentA ? 1 : -1;
+      if (isDevA !== isDevB) {
+        return isDevA ? 1 : -1; // 3文字以上（育成）を後ろにする
       }
 
-      // 2. 同じカテゴリ内（支配下同士、または育成同士）なら番号順
-      return numA - numB;
+      // 同じカテゴリ内（支配下同士 or 育成同士）なら数値として比較
+      return parseInt(a.number, 10) - parseInt(b.number, 10);
     });
 
     const positions = [...new Set(players.map(p => p.position))].filter(Boolean);
@@ -95,19 +90,19 @@ app.get("/", async (req, res) => {
       <h1>${teams[teamCode]}</h1>
       <p><a href="/">← チーム選択に戻る</a></p>
 
-      <form action="/player" method="get">
+      <form action="/player" method="get" style="display:inline-block; margin-bottom:10px;">
         <input type="hidden" name="team" value="${teamCode}">
         <input type="text" name="num" placeholder="背番号を入力" required>
         <button type="submit">背番号検索</button>
       </form>
 
-      <form action="/player" method="get">
+      <form action="/player" method="get" style="display:inline-block; margin-bottom:10px;">
         <input type="hidden" name="team" value="${teamCode}">
         <input type="text" name="name" placeholder="名前を入力" required>
         <button type="submit">名前検索</button>
       </form>
 
-      <form method="get" action="/">
+      <form method="get" action="/" style="margin-bottom:20px;">
         <input type="hidden" name="team" value="${teamCode}">
         <select name="pos">
           <option value="">全ポジション</option>
@@ -119,7 +114,7 @@ app.get("/", async (req, res) => {
 
     html += `
         </select>
-        <button type="submit">絞り込み</button>
+        <button type="submit">ポジションで絞り込み</button>
       </form>
 
       <hr>
