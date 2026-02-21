@@ -22,18 +22,17 @@ const teams = {
 app.get("/", async (req, res) => {
   const teamCode = req.query.team;
 
+  // チーム未選択時
   if (!teamCode || !teams[teamCode]) {
+    let html = "<h1>チームを選択してください</h1><ul>";
 
-  let html = "<h1>チームを選択してください</h1><ul>";
+    for (let code in teams) {
+      html += `<li><a href="/?team=${code}">${teams[code]}</a></li>`;
+    }
 
-  for (let code in teams) {
-    html += `<li><a href="/?team=${code}">${teams[code]}</a></li>`;
+    html += "</ul>";
+    return res.send(html);
   }
-
-  html += "</ul>";
-
-  return res.send(html);
-}
 
   try {
     const url = `https://npb.jp/bis/teams/rst_${teamCode}.html`;
@@ -59,21 +58,40 @@ app.get("/", async (req, res) => {
     }
 
     let html = `<h1>${teams[teamCode]}</h1><ul>`;
-   players.forEach(p => {
-  html += `<li>
-    <a href="/player?team=${teamCode}&num=${p.number}">
-      ${p.number} ${p.name}
-    </a>
-  </li>`;
-});
-    html += "</ul>";
 
+    players.forEach(p => {
+      html += `
+        <li>
+          <a href="/player?team=${teamCode}&num=${p.number}">
+            ${p.number} ${p.name}
+          </a>
+        </li>
+      `;
+    });
+
+    html += "</ul>";
     res.send(html);
 
   } catch (err) {
-    console.error(err.message);
+    console.error(err);
     res.send("選手データ取得失敗");
   }
+});
+
+app.get("/player", (req, res) => {
+  const teamCode = req.query.team;
+  const number = req.query.num;
+
+  if (!teamCode || !number) {
+    return res.send("選手情報が不足しています");
+  }
+
+  res.send(`
+    <h1>選手詳細ページ</h1>
+    <p>チームコード: ${teamCode}</p>
+    <p>背番号: ${number}</p>
+    <a href="/?team=${teamCode}">← 戻る</a>
+  `);
 });
 
 module.exports = app;
