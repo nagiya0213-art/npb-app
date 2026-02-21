@@ -5,18 +5,18 @@ const cheerio = require("cheerio");
 const app = express();
 
 const teams = {
-  g: "giants",
-  t: "tigers",
-  d: "dragons",
-  c: "carp",
-  db: "baystars",
-  s: "swallows",
-  l: "lions",
-  h: "hawks",
-  e: "eagles",
-  m: "marines",
-  f: "fighters",
-  b: "buffaloes"
+  g: "読売ジャイアンツ",
+  t: "阪神タイガース",
+  d: "中日ドラゴンズ",
+  c: "広島東洋カープ",
+  db: "横浜DeNAベイスターズ",
+  s: "東京ヤクルトスワローズ",
+  l: "埼玉西武ライオンズ",
+  h: "福岡ソフトバンクホークス",
+  e: "東北楽天ゴールデンイーグルス",
+  m: "千葉ロッテマリーンズ",
+  f: "北海道日本ハムファイターズ",
+  b: "オリックス・バファローズ"
 };
 
 app.get("/", async (req, res) => {
