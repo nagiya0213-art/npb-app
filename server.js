@@ -4,6 +4,10 @@ const cheerio = require("cheerio");
 
 const app = express();
 
+/* =========================
+   球団一覧
+========================= */
+
 const teams = {
   g: "読売ジャイアンツ",
   t: "阪神タイガース",
@@ -20,16 +24,17 @@ const teams = {
 };
 
 
-
 /* =========================
    球団ページ
 ========================= */
+
 app.get("/", async (req, res) => {
+
   const teamCode = req.query.team;
   const filterPos = req.query.pos || "";
 
   if (!teamCode || !teams[teamCode]) {
-    let html = "<h1>チームを選択してください</h1><ul>";
+    let html = "<h1>チームを選択</h1><ul>";
     for (let code in teams) {
       html += `<li><a href="/?team=${code}">${teams[code]}</a></li>`;
     }
@@ -38,27 +43,25 @@ app.get("/", async (req, res) => {
   }
 
   try {
+
     const url = `https://npb.jp/bis/teams/rst_${teamCode}.html`;
     const response = await axios.get(url);
     const $ = cheerio.load(response.data);
 
     const players = [];
 
-    $("table tr").each((i, el) => {
-      const tds = $(el).find("td");
+    /* 🔥 rosterMainHeadから取得 */
+    $(".rosterMainHead").each((i, el) => {
 
-      // 背番号 / 氏名 / 年齢 / ポジション
-      if (tds.length >= 4) {
-        const number = tds.eq(0).text().trim();
-        const position = tds.eq(3).text().trim(); // ← 正しいポジション
+      const number = $(el).find(".rosterMainNo").text().trim();      // 背番号（文字列）
+      const position = $(el).find(".rosterMainPos").text().trim();  // ポジション
 
-        if (/^\d+$/.test(number)) {
-          players.push({ number, position }); // 文字列保持
-        }
+      if (number) {
+        players.push({ number, position });
       }
     });
 
-    // 数値順ソート（文字列のまま）
+    /* 背番号ソート（文字列保持） */
     players.sort((a, b) =>
       a.number.localeCompare(b.number, undefined, { numeric: true })
     );
@@ -69,22 +72,22 @@ app.get("/", async (req, res) => {
       ? players.filter(p => p.position === filterPos)
       : players;
 
-    let html = `
-      <h1>${teams[teamCode]}</h1>
+    let html = `<h1>${teams[teamCode]}</h1>`;
 
+    html += `
       <form action="/player" method="get">
         <input type="hidden" name="team" value="${teamCode}">
-        <input type="number" name="num" placeholder="背番号を入力">
+        <input type="text" name="num" placeholder="背番号">
         <button type="submit">背番号検索</button>
       </form>
 
       <form action="/player" method="get">
         <input type="hidden" name="team" value="${teamCode}">
-        <input type="text" name="name" placeholder="名前を入力">
+        <input type="text" name="name" placeholder="名前検索">
         <button type="submit">名前検索</button>
       </form>
 
-      <form method="get" action="/">
+      <form method="get">
         <input type="hidden" name="team" value="${teamCode}">
         <select name="pos">
           <option value="">全ポジション</option>
@@ -99,13 +102,11 @@ app.get("/", async (req, res) => {
         <button type="submit">絞り込み</button>
       </form>
 
-      <hr>
-      <ul>
+      <hr><ul>
     `;
 
-    // 背番号のみ表示
     filteredPlayers.forEach(p => {
-      html += `<li>${p.number}</li>`;
+      html += `<li>${p.number} (${p.position})</li>`;
     });
 
     html += "</ul>";
@@ -113,17 +114,17 @@ app.get("/", async (req, res) => {
     res.send(html);
 
   } catch (err) {
-    console.error(err);
-    res.send("取得失敗");
+    res.send("球団ページ取得失敗");
   }
 });
 
 
-
 /* =========================
-   選手検索・詳細
+   選手検索
 ========================= */
+
 app.get("/player", async (req, res) => {
+
   const teamCode = req.query.team;
   const number = req.query.num;
   const nameQuery = req.query.name;
@@ -133,7 +134,6 @@ app.get("/player", async (req, res) => {
 
   try {
 
-    // 直接リンク指定の場合
     if (directLink) {
       return await renderPlayer(directLink, teamCode, res);
     }
@@ -144,20 +144,17 @@ app.get("/player", async (req, res) => {
 
     const matches = [];
 
-    $team("table tr").each((i, el) => {
-      const tds = $team(el).find("td");
-      if (tds.length >= 2) {
-        const num = tds.eq(0).text().trim();
-        const aTag = tds.eq(1).find("a");
-        const name = aTag.text().trim();
-        const link = aTag.attr("href");
+    $team(".rosterMainHead").each((i, el) => {
 
-        if (
-          (number && num === number) ||
-          (nameQuery && name.includes(nameQuery))
-        ) {
-          matches.push({ name, link });
-        }
+      const num = $team(el).find(".rosterMainNo").text().trim();
+      const name = $team(el).find(".rosterMainName a").text().trim();
+      const link = $team(el).find(".rosterMainName a").attr("href");
+
+      if (
+        (number && num === number) ||
+        (nameQuery && name.includes(nameQuery))
+      ) {
+        matches.push({ name, link });
       }
     });
 
@@ -165,7 +162,6 @@ app.get("/player", async (req, res) => {
       return res.send("選手が見つかりません");
     }
 
-    // 複数ヒット
     if (matches.length > 1 && nameQuery) {
       let html = "<h1>該当選手一覧</h1><ul>";
       matches.forEach(p => {
@@ -183,63 +179,36 @@ app.get("/player", async (req, res) => {
 
     await renderPlayer(matches[0].link, teamCode, res);
 
-  } catch (err) {
-    console.error(err);
-    res.send("取得失敗");
+  } catch {
+    res.send("検索失敗");
   }
 });
 
 
-
 /* =========================
-   詳細描画
+   詳細表示
 ========================= */
+
 async function renderPlayer(link, teamCode, res) {
 
   const playerUrl = `https://npb.jp${link}`;
   const playerRes = await axios.get(playerUrl);
   const $player = cheerio.load(playerRes.data);
 
-  // 正しい選手名取得
-  const playerName = $player(".ttl-player").first().text().trim();
+  /* ✅ 正しい選手名 */
+  const playerName = $player("#pc_v_name").text().trim();
 
   const profile = [];
 
   $player("tbody tr").each((i, el) => {
+
     const th = $player(el).find("th").text().trim();
     const td = $player(el).find("td").text().trim();
 
-    if (
-      th === "ポジション" ||
-      th === "投打" ||
-      th === "身長／体重" ||
-      th === "生年月日" ||
-      th === "経歴" ||
-      th === "ドラフト"
-    ) {
+    if (th && td) {
       profile.push({ th, td });
     }
   });
-
-  // 年齢計算
-  let age = "";
-  const birthRow = profile.find(p => p.th === "生年月日");
-
-  if (birthRow) {
-    const birthDate = new Date(
-      birthRow.td.replace(/年|月/g, "-").replace(/日/, "")
-    );
-    const today = new Date();
-    age = today.getFullYear() - birthDate.getFullYear();
-
-    if (
-      today.getMonth() < birthDate.getMonth() ||
-      (today.getMonth() === birthDate.getMonth() &&
-        today.getDate() < birthDate.getDate())
-    ) {
-      age--;
-    }
-  }
 
   let html = `<h1>${playerName}</h1><ul>`;
 
@@ -247,30 +216,47 @@ async function renderPlayer(link, teamCode, res) {
     html += `<li>${p.th}: ${p.td}</li>`;
   });
 
-  if (age) html += `<li>年齢: ${age}歳</li>`;
-
   html += "</ul>";
 
-  // ヤクルト応援歌
+  /* =========================
+     ヤクルト応援歌（完全一致）
+  ========================= */
+
   if (teamCode === "s") {
+
     try {
+
       const songPage = await axios.get(
         "https://www.yakult-swallows.co.jp/players/song",
         { headers: { "User-Agent": "Mozilla/5.0" } }
       );
 
       const $song = cheerio.load(songPage.data);
-      const normalizedName = playerName.replace(/\s/g, "");
+
+      const normalize = (str) => {
+        return str
+          .replace(/\s/g, "")
+          .replace(/．/g, ".")
+          .replace(/[Ａ-Ｚａ-ｚ０-９]/g, s =>
+            String.fromCharCode(s.charCodeAt(0) - 0xFEE0)
+          )
+          .toUpperCase();
+      };
+
+      const normalizedName = normalize(playerName);
       let lyrics = [];
 
       $song(".v-players-song__list-item").each((i, el) => {
-        const songName = $song(el)
+
+        const songNameRaw = $song(el)
           .find(".v-players-song__list-name")
           .text()
-          .trim()
-          .replace(/\s/g, "");
+          .trim();
 
-        if (songName === normalizedName) {
+        const normalizedSongName = normalize(songNameRaw);
+
+        if (normalizedSongName === normalizedName) {
+
           $song(el)
             .find(".v-players-song__phrase-text p")
             .each((j, p) => {
@@ -293,5 +279,6 @@ async function renderPlayer(link, teamCode, res) {
 
   res.send(html);
 }
+
 
 module.exports = app;
