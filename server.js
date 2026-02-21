@@ -20,7 +20,7 @@ const teams = {
 };
 
 /* =========================
-   球団ページ（修正版）
+   球団ページ（一覧・検索・フィルター）
 ========================= */
 app.get("/", async (req, res) => {
   const teamCode = req.query.team;
@@ -42,33 +42,34 @@ app.get("/", async (req, res) => {
 
     const players = [];
     
-    // 全てのテーブル（支配下・育成両方）を対象にループ
+    // 支配下・育成の両方のテーブルを解析
     $("table.rosterlisttbl").each((_, table) => {
       let currentPosition = "";
       
       $(table).find("tr").each((i, el) => {
-        // ポジション行（投手・捕手など）の判定
+        // ポジション見出し行
         if ($(el).hasClass("rosterMainHead")) {
-          // Aタグがある場合とない場合両方に対応
           const posText = $(el).find(".rosterPos").text().trim();
           if (posText) currentPosition = posText;
         }
 
-        // 選手行の判定
+        // 選手データ行
         if ($(el).hasClass("rosterPlayer")) {
           const number = $(el).find("td").eq(0).text().trim();
           const name = $(el).find(".rosterRegister").text().trim();
+          const link = $(el).find(".rosterRegister a").attr("href");
 
           players.push({
             number,
             name,
+            link,
             position: currentPosition
           });
         }
       });
     });
 
-    // 文字列のまま数値順ソート
+    // 背番号順にソート（数値として比較）
     players.sort((a, b) =>
       a.number.localeCompare(b.number, undefined, { numeric: true })
     );
@@ -81,7 +82,7 @@ app.get("/", async (req, res) => {
 
     let html = `
       <h1>${teams[teamCode]}</h1>
-      <p><a href="/">← チーム一覧へ戻る</a></p>
+      <p><a href="/">← チーム選択に戻る</a></p>
 
       <form action="/player" method="get">
         <input type="hidden" name="team" value="${teamCode}">
@@ -111,13 +112,11 @@ app.get("/", async (req, res) => {
       </form>
 
       <hr>
-      <h3>選手一覧 (${filterPos || '全ポジション'})</h3>
       <ul>
     `;
 
     filteredPlayers.forEach(p => {
-      // 一覧からも詳細へ飛べるようにリンクを追加
-      html += `<li>${p.number} - <a href="/player?team=${teamCode}&num=${p.number}">${p.name}</a> [${p.position}]</li>`;
+      html += `<li>${p.number} - <a href="/player?team=${teamCode}&direct=${encodeURIComponent(p.link)}">${p.name}</a></li>`;
     });
 
     html += "</ul>";
@@ -130,13 +129,13 @@ app.get("/", async (req, res) => {
 });
 
 /* =========================
-   選手詳細（リンク修正版）
+   選手詳細（応援歌統合版）
 ========================= */
 app.get("/player", async (req, res) => {
   const teamCode = req.query.team;
   const number = req.query.num;
   const nameQuery = req.query.name;
-  const directLink = req.query.direct; // 複数候補から選ばれた際のリンク
+  const directLink = req.query.direct;
 
   if (!teamCode) return res.send("情報不足");
 
@@ -145,11 +144,16 @@ app.get("/player", async (req, res) => {
     const teamRes = await axios.get(teamUrl);
     const $team = cheerio.load(teamRes.data);
 
-    let playerLink = directLink;
-    let playerName = "";
+    let targetLink = directLink;
+    let targetName = "";
 
-    // directLinkがない場合は検索を行う
-    if (!playerLink) {
+    // 1. リンクと名前の特定
+    if (targetLink) {
+      // 一覧や複数候補からリンクが確定して来た場合
+      const found = $team(`a[href="${targetLink}"]`);
+      targetName = found.text().trim();
+    } else {
+      // 検索窓から直接来た場合
       const matches = [];
       $team("tr.rosterPlayer").each((i, el) => {
         const num = $team(el).find("td").eq(0).text().trim();
@@ -157,19 +161,16 @@ app.get("/player", async (req, res) => {
         const name = aTag.text().trim();
         const link = aTag.attr("href");
 
-        if (
-          (number && num === number) ||
-          (nameQuery && name.includes(nameQuery))
-        ) {
+        if ((number && num === number) || (nameQuery && name.includes(nameQuery))) {
           matches.push({ name, link });
         }
       });
 
       if (matches.length === 0) return res.send("選手が見つかりません");
 
-      // 複数ヒットした場合はリストを表示
+      // 複数ヒットした場合はリストを表示して再選択
       if (matches.length > 1 && !number) {
-        let html = "<h1>該当選手一覧</h1><ul>";
+        let html = `<h1>「${nameQuery}」の検索結果</h1><ul>`;
         matches.forEach(p => {
           html += `
             <li>
@@ -183,19 +184,14 @@ app.get("/player", async (req, res) => {
         return res.send(html);
       }
       
-      playerLink = matches[0].link;
-      playerName = matches[0].name;
+      targetLink = matches[0].link;
+      targetName = matches[0].name;
     }
 
-    // 詳細データの取得
-    const playerUrl = `https://npb.jp${playerLink}`;
+    // 2. 詳細ページの取得と解析
+    const playerUrl = `https://npb.jp${targetLink}`;
     const playerRes = await axios.get(playerUrl);
     const $player = cheerio.load(playerRes.data);
-
-    // playerNameが未設定（directLinkで来た場合など）ならページから取得
-    if (!playerName) {
-      playerName = $player("#pc_v_name #nm_kanji").text().trim() || "選手詳細";
-    }
 
     const profile = [];
     $player("table").first().find("tr").each((i, el) => {
@@ -206,39 +202,54 @@ app.get("/player", async (req, res) => {
       }
     });
 
-    let html = `<h1>${playerName}</h1><ul>`;
+    let html = `<h1>${targetName}</h1><ul>`;
     profile.forEach(p => { html += `<li>${p.th}: ${p.td}</li>`; });
     html += "</ul>";
 
-    /* 応援歌コード（変更なし） */
-    if (teamCode === "s") {
+    // 3. ヤクルトの場合のみ応援歌を取得
+    if (teamCode === "s" && targetName) {
       try {
-        const songPage = await axios.get("https://www.yakult-swallows.co.jp/players/song", { headers: { "User-Agent": "Mozilla/5.0" } });
+        const songPage = await axios.get("https://www.yakult-swallows.co.jp/players/song", { 
+          headers: { "User-Agent": "Mozilla/5.0" },
+          timeout: 5000 
+        });
         const $song = cheerio.load(songPage.data);
-        const normalizedName = playerName.replace(/\s/g, "");
+        const normalizedTargetName = targetName.replace(/\s/g, "");
+        
         let lyrics = [];
         $song(".v-players-song__list-item").each((i, el) => {
           const songName = $song(el).find(".v-players-song__list-name").text().trim().replace(/\s/g, "");
-          if (songName === normalizedName) {
+          if (songName === normalizedTargetName) {
             $song(el).find(".v-players-song__phrase-text p").each((j, pEl) => {
               lyrics.push($song(pEl).text().trim());
             });
           }
         });
+
         if (lyrics.length > 0) {
-          html += "<h2>応援歌</h2>";
-          lyrics.forEach(line => { html += `<p>${line}</p>`; });
+          html += "<hr><h2>応援歌</h2>";
+          lyrics.forEach(line => { html += `<p><strong>${line}</strong></p>`; });
         }
-      } catch (err) { console.error("応援歌取得失敗"); }
+      } catch (err) {
+        console.error("応援歌取得失敗");
+      }
     }
 
-    html += `<p><a href="/?team=${teamCode}">チーム一覧へ戻る</a></p>`;
+    html += `<hr><p><a href="/?team=${teamCode}">選手一覧に戻る</a></p>`;
     res.send(html);
 
   } catch (err) {
     console.error(err);
     res.send("取得失敗");
   }
+});
+
+/* =========================
+   サーバー起動
+========================= */
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`);
 });
 
 module.exports = app;
