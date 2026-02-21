@@ -20,6 +20,7 @@ const teams = {
 };
 
 
+
 // =========================
 // トップ（球団一覧＋選手一覧）
 // =========================
@@ -53,7 +54,19 @@ app.get("/", async (req, res) => {
       }
     });
 
-    let html = `<h1>${teams[teamCode]}</h1><ul>`;
+    let html = `
+      <h1>${teams[teamCode]}</h1>
+
+      <form action="/player" method="get">
+        <input type="hidden" name="team" value="${teamCode}">
+        <input type="number" name="num" placeholder="背番号を入力" required>
+        <button type="submit">検索</button>
+      </form>
+
+      <hr>
+      <ul>
+    `;
+
     players.forEach(p => {
       html += `
         <li>
@@ -63,6 +76,7 @@ app.get("/", async (req, res) => {
         </li>
       `;
     });
+
     html += "</ul>";
 
     res.send(html);
@@ -72,6 +86,7 @@ app.get("/", async (req, res) => {
     res.send("選手データ取得失敗");
   }
 });
+
 
 
 // =========================
@@ -109,7 +124,7 @@ app.get("/player", async (req, res) => {
     });
 
     if (!playerLink) {
-      return res.send("選手詳細が見つかりません");
+      return res.send("その背番号の選手は見つかりません");
     }
 
     // 個人ページ取得
@@ -144,6 +159,7 @@ app.get("/player", async (req, res) => {
     }
 
     let html = `<h1>${playerName}</h1><ul>`;
+
     profile.forEach(p => {
       html += `<li>${p.th}: ${p.td}</li>`;
     });
