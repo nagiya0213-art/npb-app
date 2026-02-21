@@ -137,3 +137,5 @@ app.get("/player", async (req, res) => {
     res.send("選手詳細取得失敗");
   }
 });
+
+module.exports = app;
