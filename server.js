@@ -21,9 +21,9 @@ const teams = {
 
 
 
-// =========================
-// トップ（球団一覧＋選手一覧）
-// =========================
+/* =========================
+   球団ページ
+========================= */
 app.get("/", async (req, res) => {
   const teamCode = req.query.team;
   const filterPos = req.query.pos || "";
@@ -48,14 +48,19 @@ app.get("/", async (req, res) => {
       const tds = $(el).find("td");
       if (tds.length >= 4) {
         const number = tds.eq(0).text().trim();
-        const name = tds.eq(1).text().trim();
         const position = tds.eq(3).text().trim();
 
-        if (/^\d+$/.test(number) && name) {
-          players.push({ number, name, position });
+        if (/^\d+$/.test(number)) {
+          players.push({
+            number: parseInt(number),
+            position
+          });
         }
       }
     });
+
+    // 数字順に並び替え
+    players.sort((a, b) => a.number - b.number);
 
     const positions = [...new Set(players.map(p => p.position))];
 
@@ -100,8 +105,9 @@ app.get("/", async (req, res) => {
       <ul>
     `;
 
+    // 🔥 背番号のみ表示
     filteredPlayers.forEach(p => {
-      html += `<li>${p.number} ${p.name}（${p.position}）</li>`;
+      html += `<li>${p.number}</li>`;
     });
 
     html += "</ul>";
@@ -116,16 +122,16 @@ app.get("/", async (req, res) => {
 
 
 
-// =========================
-// 選手詳細
-// =========================
+/* =========================
+   選手詳細
+========================= */
 app.get("/player", async (req, res) => {
   const teamCode = req.query.team;
   const number = req.query.num;
   const nameQuery = req.query.name;
 
   if (!teamCode) {
-    return res.send("情報が不足しています");
+    return res.send("情報不足");
   }
 
   try {
@@ -133,8 +139,7 @@ app.get("/player", async (req, res) => {
     const teamRes = await axios.get(teamUrl);
     const $team = cheerio.load(teamRes.data);
 
-    let playerLink = null;
-    let playerName = "";
+    const matches = [];
 
     $team("table tr").each((i, el) => {
       const tds = $team(el).find("td");
@@ -142,18 +147,37 @@ app.get("/player", async (req, res) => {
         const num = tds.eq(0).text().trim();
         const aTag = tds.eq(1).find("a");
         const name = aTag.text().trim();
+        const link = aTag.attr("href");
 
-        if ((number && num === number) ||
-            (nameQuery && name.includes(nameQuery))) {
-          playerLink = aTag.attr("href");
-          playerName = name;
+        if (
+          (number && num === number) ||
+          (nameQuery && name.includes(nameQuery))
+        ) {
+          matches.push({ name, link });
         }
       }
     });
 
-    if (!playerLink) {
+    if (matches.length === 0) {
       return res.send("選手が見つかりません");
     }
+
+    // 🔥 複数ヒット時
+    if (matches.length > 1 && nameQuery) {
+      let html = "<h1>該当選手一覧</h1><ul>";
+      matches.forEach(p => {
+        html += `<li>
+          <a href="/player?team=${teamCode}&direct=${encodeURIComponent(p.link)}">
+            ${p.name}
+          </a>
+        </li>`;
+      });
+      html += "</ul>";
+      return res.send(html);
+    }
+
+    const playerLink = req.query.direct || matches[0].link;
+    const playerName = matches[0].name;
 
     const playerUrl = `https://npb.jp${playerLink}`;
     const playerRes = await axios.get(playerUrl);
@@ -197,30 +221,22 @@ app.get("/player", async (req, res) => {
     profile.forEach(p => {
       html += `<li>${p.th}: ${p.td}</li>`;
     });
-
     if (age !== "") {
       html += `<li>年齢: ${age}歳</li>`;
     }
-
     html += "</ul>";
 
-    // =========================
     // ヤクルト応援歌
-    // =========================
     if (teamCode === "s") {
       try {
         const songPage = await axios.get(
           "https://www.yakult-swallows.co.jp/players/song",
-          {
-            headers: { "User-Agent": "Mozilla/5.0" },
-            timeout: 5000
-          }
+          { headers: { "User-Agent": "Mozilla/5.0" } }
         );
 
         const $song = cheerio.load(songPage.data);
-        let lyrics = [];
-
         const normalizedName = playerName.replace(/\s/g, "");
+        let lyrics = [];
 
         $song(".v-players-song__list-item").each((i, el) => {
           const songName = $song(el)
@@ -245,7 +261,7 @@ app.get("/player", async (req, res) => {
           });
         }
       } catch (err) {
-        console.error("応援歌取得失敗:", err.message);
+        console.error("応援歌取得失敗");
       }
     }
 
@@ -253,7 +269,7 @@ app.get("/player", async (req, res) => {
 
   } catch (err) {
     console.error(err);
-    res.send("選手詳細取得失敗");
+    res.send("取得失敗");
   }
 });
 
