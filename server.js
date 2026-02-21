@@ -53,8 +53,11 @@ app.get("/", async (req, res) => {
 
         if ($(el).hasClass("rosterPlayer")) {
           const number = $(el).find("td").eq(0).text().trim();
-          const name = $(el).find(".rosterRegister").text().trim();
-          const link = $(el).find(".rosterRegister a").attr("href");
+          const nameContainer = $(el).find(".rosterRegister");
+          const aTag = nameContainer.find("a");
+          
+          const name = nameContainer.text().trim();
+          const link = aTag.attr("href") || null; // リンクがない場合はnull
 
           players.push({
             number,
@@ -66,25 +69,16 @@ app.get("/", async (req, res) => {
       });
     });
 
-    /* --- ソートロジックの修正 --- */
+    // ソート：支配下（1-2桁）→ 育成（3桁以上）
     players.sort((a, b) => {
-      // 「012」などは文字列のまま3文字以上なら育成枠（下位）へ送る
       const isDevA = a.number.length >= 3;
       const isDevB = b.number.length >= 3;
-
-      if (isDevA !== isDevB) {
-        return isDevA ? 1 : -1; // 3文字以上（育成）を後ろにする
-      }
-
-      // 同じカテゴリ内（支配下同士 or 育成同士）なら数値として比較
+      if (isDevA !== isDevB) return isDevA ? 1 : -1;
       return parseInt(a.number, 10) - parseInt(b.number, 10);
     });
 
     const positions = [...new Set(players.map(p => p.position))].filter(Boolean);
-
-    const filteredPlayers = filterPos
-      ? players.filter(p => p.position === filterPos)
-      : players;
+    const filteredPlayers = filterPos ? players.filter(p => p.position === filterPos) : players;
 
     let html = `
       <h1>${teams[teamCode]}</h1>
@@ -112,17 +106,15 @@ app.get("/", async (req, res) => {
       html += `<option value="${pos}" ${pos === filterPos ? "selected" : ""}>${pos}</option>`;
     });
 
-    html += `
-        </select>
-        <button type="submit">ポジションで絞り込み</button>
-      </form>
-
-      <hr>
-      <ul>
-    `;
+    html += `</select><button type="submit">ポジション絞り込み</button></form><hr><ul>`;
 
     filteredPlayers.forEach(p => {
-      html += `<li>${p.number} - <a href="/player?team=${teamCode}&direct=${encodeURIComponent(p.link)}">${p.name}</a></li>`;
+      // リンク(link)がある場合のみAタグを生成、ない（監督等）場合は名前のみ表示
+      if (p.link) {
+        html += `<li>${p.number} - <a href="/player?team=${teamCode}&direct=${encodeURIComponent(p.link)}">${p.name}</a></li>`;
+      } else {
+        html += `<li>${p.number} - ${p.name} (リンクなし)</li>`;
+      }
     });
 
     html += "</ul>";
@@ -161,25 +153,23 @@ app.get("/player", async (req, res) => {
       $team("tr.rosterPlayer").each((i, el) => {
         const num = $team(el).find("td").eq(0).text().trim();
         const aTag = $team(el).find(".rosterRegister a");
-        const name = aTag.text().trim();
-        const link = aTag.attr("href");
-
-        if ((number && num === number) || (nameQuery && name.includes(nameQuery))) {
-          matches.push({ name, link });
+        
+        // リンクがある（選手である）場合のみ検索対象にする
+        if (aTag.length > 0) {
+          const name = aTag.text().trim();
+          const link = aTag.attr("href");
+          if ((number && num === number) || (nameQuery && name.includes(nameQuery))) {
+            matches.push({ name, link });
+          }
         }
       });
 
-      if (matches.length === 0) return res.send("選手が見つかりません");
+      if (matches.length === 0) return res.send("該当する選手（詳細あり）が見つかりません");
 
       if (matches.length > 1 && !number) {
-        let html = `<h1>「${nameQuery}」の検索結果</h1><ul>`;
+        let html = `<h1>検索結果</h1><ul>`;
         matches.forEach(p => {
-          html += `
-            <li>
-              <a href="/player?team=${teamCode}&direct=${encodeURIComponent(p.link)}">
-                ${p.name}
-              </a>
-            </li>`;
+          html += `<li><a href="/player?team=${teamCode}&direct=${encodeURIComponent(p.link)}">${p.name}</a></li>`;
         });
         html += "</ul><p><a href='#' onclick='history.back()'>戻る</a></p>";
         return res.send(html);
@@ -206,6 +196,7 @@ app.get("/player", async (req, res) => {
     profile.forEach(p => { html += `<li>${p.th}: ${p.td}</li>`; });
     html += "</ul>";
 
+    // ヤクルト応援歌
     if (teamCode === "s" && targetName) {
       try {
         const songPage = await axios.get("https://www.yakult-swallows.co.jp/players/song", { 
@@ -214,7 +205,6 @@ app.get("/player", async (req, res) => {
         });
         const $song = cheerio.load(songPage.data);
         const normalizedTargetName = targetName.replace(/\s/g, "");
-        
         let lyrics = [];
         $song(".v-players-song__list-item").each((i, el) => {
           const songName = $song(el).find(".v-players-song__list-name").text().trim().replace(/\s/g, "");
@@ -224,14 +214,11 @@ app.get("/player", async (req, res) => {
             });
           }
         });
-
         if (lyrics.length > 0) {
           html += "<hr><h2>応援歌</h2>";
           lyrics.forEach(line => { html += `<p><strong>${line}</strong></p>`; });
         }
-      } catch (err) {
-        console.error("応援歌取得失敗");
-      }
+      } catch (err) { console.error("応援歌取得失敗"); }
     }
 
     html += `<hr><p><a href="/?team=${teamCode}">選手一覧に戻る</a></p>`;
@@ -241,11 +228,6 @@ app.get("/player", async (req, res) => {
     console.error(err);
     res.send("取得失敗");
   }
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
 });
 
 module.exports = app;
