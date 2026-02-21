@@ -157,56 +157,49 @@ app.get("/player", async (req, res) => {
     html += "</ul>";
 
     // =========================
-    // ヤクルト応援歌取得
-    // =========================
-    if (teamCode === "s") {
-      try {
-        const songPage = await axios.get(
-          "https://www.yakult-swallows.co.jp/players/song",
-          {
-            headers: { "User-Agent": "Mozilla/5.0" },
-            timeout: 5000
-          }
-        );
-
-        const $song = cheerio.load(songPage.data);
-        let lyrics = [];
-
-        $song(".v-players-song__list-item").each((i, el) => {
-          const num = $song(el)
-            .find(".v-players-song__list-number")
-            .text()
-            .trim()
-            .replace(/^0+/, "");
-
-          if (num === number) {
-            $song(el)
-              .find(".v-players-song__phrase-text p")
-              .each((j, p) => {
-                lyrics.push($song(p).text().trim());
-              });
-          }
-        });
-
-        if (lyrics.length > 0) {
-          html += "<h2>応援歌</h2>";
-          lyrics.forEach(line => {
-            html += `<p>${line}</p>`;
-          });
-        }
-
-      } catch (err) {
-        console.error("応援歌取得失敗:", err.message);
+// ヤクルト応援歌取得（名前一致版）
+// =========================
+if (teamCode === "s") {
+  try {
+    const songPage = await axios.get(
+      "https://www.yakult-swallows.co.jp/players/song",
+      {
+        headers: { "User-Agent": "Mozilla/5.0" },
+        timeout: 5000
       }
+    );
+
+    const $song = cheerio.load(songPage.data);
+    let lyrics = [];
+
+    // 名前を正規化（スペース除去）
+    const normalizedPlayerName = playerName.replace(/\s/g, "");
+
+    $song(".v-players-song__list-item").each((i, el) => {
+      const songName = $song(el)
+        .find(".v-players-song__list-name")
+        .text()
+        .trim()
+        .replace(/\s/g, "");
+
+      if (songName === normalizedPlayerName) {
+        $song(el)
+          .find(".v-players-song__phrase-text p")
+          .each((j, p) => {
+            lyrics.push($song(p).text().trim());
+          });
+      }
+    });
+
+    if (lyrics.length > 0) {
+      html += "<h2>応援歌</h2>";
+      lyrics.forEach(line => {
+        html += `<p>${line}</p>`;
+      });
     }
 
-    html += `<br><a href="/?team=${teamCode}">← 戻る</a>`;
-
-    res.send(html);
-
   } catch (err) {
-    console.error(err);
-    res.send("選手詳細取得失敗");
+    console.error("応援歌取得失敗:", err.message);
   }
 });
 
