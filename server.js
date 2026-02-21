@@ -42,18 +42,15 @@ app.get("/", async (req, res) => {
 
     const players = [];
     
-    // 支配下・育成の両方のテーブルを解析
     $("table.rosterlisttbl").each((_, table) => {
       let currentPosition = "";
       
       $(table).find("tr").each((i, el) => {
-        // ポジション見出し行
         if ($(el).hasClass("rosterMainHead")) {
           const posText = $(el).find(".rosterPos").text().trim();
           if (posText) currentPosition = posText;
         }
 
-        // 選手データ行
         if ($(el).hasClass("rosterPlayer")) {
           const number = $(el).find("td").eq(0).text().trim();
           const name = $(el).find(".rosterRegister").text().trim();
@@ -69,10 +66,24 @@ app.get("/", async (req, res) => {
       });
     });
 
-    // 背番号順にソート（数値として比較）
-    players.sort((a, b) =>
-      a.number.localeCompare(b.number, undefined, { numeric: true })
-    );
+    /* --- ソートロジックの修正 --- */
+    players.sort((a, b) => {
+      const numA = parseInt(a.number, 10);
+      const numB = parseInt(b.number, 10);
+
+      // 1. 支配下（二桁以下）か育成（三桁以上）かの判定
+      // ※00番などの特殊なケースも考慮し、文字数ではなく数値100未満かどうかで判定
+      const isDevelopmentA = numA >= 100;
+      const isDevelopmentB = numB >= 100;
+
+      if (isDevelopmentA !== isDevelopmentB) {
+        // 支配下を上に、育成を下に
+        return isDevelopmentA ? 1 : -1;
+      }
+
+      // 2. 同じカテゴリ内（支配下同士、または育成同士）なら番号順
+      return numA - numB;
+    });
 
     const positions = [...new Set(players.map(p => p.position))].filter(Boolean);
 
@@ -129,7 +140,7 @@ app.get("/", async (req, res) => {
 });
 
 /* =========================
-   選手詳細（応援歌統合版）
+   選手詳細
 ========================= */
 app.get("/player", async (req, res) => {
   const teamCode = req.query.team;
@@ -147,13 +158,10 @@ app.get("/player", async (req, res) => {
     let targetLink = directLink;
     let targetName = "";
 
-    // 1. リンクと名前の特定
     if (targetLink) {
-      // 一覧や複数候補からリンクが確定して来た場合
       const found = $team(`a[href="${targetLink}"]`);
       targetName = found.text().trim();
     } else {
-      // 検索窓から直接来た場合
       const matches = [];
       $team("tr.rosterPlayer").each((i, el) => {
         const num = $team(el).find("td").eq(0).text().trim();
@@ -168,7 +176,6 @@ app.get("/player", async (req, res) => {
 
       if (matches.length === 0) return res.send("選手が見つかりません");
 
-      // 複数ヒットした場合はリストを表示して再選択
       if (matches.length > 1 && !number) {
         let html = `<h1>「${nameQuery}」の検索結果</h1><ul>`;
         matches.forEach(p => {
@@ -177,8 +184,7 @@ app.get("/player", async (req, res) => {
               <a href="/player?team=${teamCode}&direct=${encodeURIComponent(p.link)}">
                 ${p.name}
               </a>
-            </li>
-          `;
+            </li>`;
         });
         html += "</ul><p><a href='#' onclick='history.back()'>戻る</a></p>";
         return res.send(html);
@@ -188,7 +194,6 @@ app.get("/player", async (req, res) => {
       targetName = matches[0].name;
     }
 
-    // 2. 詳細ページの取得と解析
     const playerUrl = `https://npb.jp${targetLink}`;
     const playerRes = await axios.get(playerUrl);
     const $player = cheerio.load(playerRes.data);
@@ -206,7 +211,6 @@ app.get("/player", async (req, res) => {
     profile.forEach(p => { html += `<li>${p.th}: ${p.td}</li>`; });
     html += "</ul>";
 
-    // 3. ヤクルトの場合のみ応援歌を取得
     if (teamCode === "s" && targetName) {
       try {
         const songPage = await axios.get("https://www.yakult-swallows.co.jp/players/song", { 
@@ -244,9 +248,6 @@ app.get("/player", async (req, res) => {
   }
 });
 
-/* =========================
-   サーバー起動
-========================= */
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
