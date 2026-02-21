@@ -19,10 +19,15 @@ const teams = {
   b: "オリックス・バファローズ"
 };
 
+
+
+// =========================
+// トップページ（球団選択＋選手一覧）
+// =========================
 app.get("/", async (req, res) => {
   const teamCode = req.query.team;
 
-  // チーム未選択時
+  // チーム未選択
   if (!teamCode || !teams[teamCode]) {
     let html = "<h1>チームを選択してください</h1><ul>";
 
@@ -78,7 +83,12 @@ app.get("/", async (req, res) => {
   }
 });
 
-app.get("/player", (req, res) => {
+
+
+// =========================
+// 選手詳細ページ
+// =========================
+app.get("/player", async (req, res) => {
   const teamCode = req.query.team;
   const number = req.query.num;
 
@@ -86,12 +96,67 @@ app.get("/player", (req, res) => {
     return res.send("選手情報が不足しています");
   }
 
-  res.send(`
-    <h1>選手詳細ページ</h1>
-    <p>チームコード: ${teamCode}</p>
-    <p>背番号: ${number}</p>
-    <a href="/?team=${teamCode}">← 戻る</a>
-  `);
+  try {
+    // ① チームページ取得
+    const teamUrl = `https://npb.jp/bis/teams/rst_${teamCode}.html`;
+    const teamRes = await axios.get(teamUrl);
+    const $team = cheerio.load(teamRes.data);
+
+    let playerLink = null;
+    let playerName = "";
+
+    // ② 背番号一致のリンク取得
+    $team("table tr").each((i, el) => {
+      const tds = $team(el).find("td");
+      if (tds.length >= 2) {
+        const num = tds.eq(0).text().trim();
+        if (num === number) {
+          const aTag = tds.eq(1).find("a");
+          if (aTag.length > 0) {
+            playerLink = aTag.attr("href");
+            playerName = aTag.text().trim();
+          }
+        }
+      }
+    });
+
+    if (!playerLink) {
+      return res.send("選手詳細が見つかりません");
+    }
+
+    // ③ 個人ページ取得
+    const playerUrl = `https://npb.jp${playerLink}`;
+    const playerRes = await axios.get(playerUrl);
+    const $player = cheerio.load(playerRes.data);
+
+    const profile = [];
+
+    // ④ プロフィールテーブル取得
+    $player("table tr").each((i, el) => {
+      const th = $player(el).find("th").text().trim();
+      const td = $player(el).find("td").text().trim();
+      if (th && td) {
+        profile.push({ th, td });
+      }
+    });
+
+    let html = `<h1>${playerName}</h1><ul>`;
+
+    profile.forEach(p => {
+      html += `<li>${p.th}: ${p.td}</li>`;
+    });
+
+    html += "</ul>";
+    html += `<a href="/?team=${teamCode}">← 戻る</a>`;
+
+    res.send(html);
+
+  } catch (err) {
+    console.error(err);
+    res.send("選手詳細取得失敗");
+  }
 });
+
+
 
 module.exports = app;
