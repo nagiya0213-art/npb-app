@@ -20,7 +20,6 @@ const teams = {
 };
 
 
-
 // =========================
 // トップ（球団一覧＋選手一覧）
 // =========================
@@ -75,7 +74,6 @@ app.get("/", async (req, res) => {
 });
 
 
-
 // =========================
 // 選手詳細
 // =========================
@@ -88,7 +86,6 @@ app.get("/player", async (req, res) => {
   }
 
   try {
-    // チームページ取得
     const teamUrl = `https://npb.jp/bis/teams/rst_${teamCode}.html`;
     const teamRes = await axios.get(teamUrl);
     const $team = cheerio.load(teamRes.data);
@@ -114,53 +111,12 @@ app.get("/player", async (req, res) => {
       return res.send("選手詳細が見つかりません");
     }
 
-    // =========================
-// 選手詳細（位置〜ドラフト全部表示＋年齢）
-// =========================
-app.get("/player", async (req, res) => {
-  const teamCode = req.query.team;
-  const number = req.query.num;
-
-  if (!teamCode || !number) {
-    return res.send("選手情報が不足しています");
-  }
-
-  try {
-    // チームページ取得
-    const teamUrl = `https://npb.jp/bis/teams/rst_${teamCode}.html`;
-    const teamRes = await axios.get(teamUrl);
-    const $team = cheerio.load(teamRes.data);
-
-    let playerLink = null;
-    let playerName = "";
-
-    // 背番号一致の選手リンク取得
-    $team("table tr").each((i, el) => {
-      const tds = $team(el).find("td");
-      if (tds.length >= 2) {
-        const num = tds.eq(0).text().trim();
-        if (num === number) {
-          const aTag = tds.eq(1).find("a");
-          if (aTag.length > 0) {
-            playerLink = aTag.attr("href");
-            playerName = aTag.text().trim();
-          }
-        }
-      }
-    });
-
-    if (!playerLink) {
-      return res.send("選手詳細が見つかりません");
-    }
-
-    // 個人ページ取得
     const playerUrl = `https://npb.jp${playerLink}`;
     const playerRes = await axios.get(playerUrl);
     const $player = cheerio.load(playerRes.data);
 
     const profile = [];
 
-    // プロフィール表を全部取得
     $player("table tr").each((i, el) => {
       const th = $player(el).find("th").text().trim();
       const td = $player(el).find("td").text().trim();
@@ -169,10 +125,8 @@ app.get("/player", async (req, res) => {
       }
     });
 
-    // 年齢計算
     let age = "";
     const birthRow = profile.find(p => p.th.includes("生年月日"));
-
     if (birthRow) {
       const birthDate = new Date(
         birthRow.td.replace(/年|月/g, "-").replace(/日/, "")
@@ -187,9 +141,14 @@ app.get("/player", async (req, res) => {
 
     let html = `<h1>${playerName}</h1><ul>`;
 
-    profile.forEach(p => {
-      html += `<li>${p.th}: ${p.td}</li>`;
-    });
+    const startIndex = profile.findIndex(p => p.th.includes("守備位置"));
+    const endIndex = profile.findIndex(p => p.th.includes("ドラフト"));
+
+    if (startIndex !== -1 && endIndex !== -1) {
+      for (let i = startIndex; i <= endIndex; i++) {
+        html += `<li>${profile[i].th}: ${profile[i].td}</li>`;
+      }
+    }
 
     if (age !== "") {
       html += `<li>年齢: ${age}歳</li>`;
@@ -197,9 +156,6 @@ app.get("/player", async (req, res) => {
 
     html += "</ul>";
 
-    // =========================
-    // ヤクルト応援歌（名前一致）
-    // =========================
     if (teamCode === "s") {
       try {
         const songPage = await axios.get(
