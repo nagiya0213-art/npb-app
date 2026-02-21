@@ -6,6 +6,7 @@ const path = require("path");
 
 const app = express();
 
+
 // ===== 年齢計算 =====
 function calculateAge(birthText) {
   const match = birthText.match(/(\d+)年(\d+)月(\d+)日/);
@@ -25,6 +26,21 @@ function calculateAge(birthText) {
   return age;
 }
 
+
+// ===== 最新年度取得 =====
+async function getLatestYear() {
+  try {
+    const res = await axios.get("https://npb.jp/bis/teams/");
+    const $ = cheerio.load(res.data);
+    const match = $("h1").text().match(/\d{4}年度/);
+    if (match) return match[0].replace("年度", "");
+  } catch (err) {
+    console.log("年度取得失敗");
+  }
+  return new Date().getFullYear();
+}
+
+
 // ===== 球団一覧 =====
 const teams = {
   g: "読売ジャイアンツ",
@@ -40,6 +56,7 @@ const teams = {
   f: "北海道日本ハムファイターズ",
   e: "東北楽天ゴールデンイーグルス"
 };
+
 
 // ===== キャッシュ =====
 const CACHE_DIR = path.join(__dirname, "cache");
@@ -58,27 +75,39 @@ function saveCache(file, data) {
   fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf-8");
 }
 
+
 // ===== トップページ =====
 app.get("/", async (req, res) => {
-  let html = "<h1>球団を選んでください</h1><ul>";
+  const year = await getLatestYear();
+
+  let html = `<meta name="viewport" content="width=device-width, initial-scale=1">`;
+  html += `<h2>${year}年度</h2>`;
+  html += "<h1>球団を選んでください</h1><ul>";
+
   for (let code in teams) {
     html += `<li><a href="/team/${code}">${teams[code]}</a></li>`;
   }
+
   html += "</ul>";
   res.send(html);
 });
 
+
 // ===== 球団ページ =====
 app.get("/team/:code", async (req, res) => {
+
   const code = req.params.code;
   const numberInput = req.query.number;
   const teamName = teams[code];
 
   if (!teamName) return res.send("球団が見つかりません");
 
-  const cacheFile = `${code}.json`;
+  const year = await getLatestYear();
+  const cacheFile = `${code}_${year}.json`;
+
   let cacheData = loadCache(cacheFile);
 
+  // ===== 選手一覧取得 =====
   if (!cacheData) {
     try {
       const url = `https://npb.jp/bis/teams/rst_${code}.html`;
@@ -86,24 +115,29 @@ app.get("/team/:code", async (req, res) => {
       const $ = cheerio.load(response.data);
 
       const players = [];
-      $("tr").each((i, el) => {
-        const number = $(el).find("td").eq(0).text().trim();
-        const name = $(el).find("td").eq(1).text().trim();
-        const link = $(el).find("td").eq(1).find("a").attr("href");
 
-        if (number && name && link) {
-          players.push({
-            number,
-            name,
-            link: "https://npb.jp" + link
-          });
+      $("table").first().find("tr").each((i, el) => {
+        const tds = $(el).find("td");
+        if (tds.length >= 2) {
+          const number = tds.eq(0).text().trim();
+          const name = tds.eq(1).text().trim();
+          const link = tds.eq(1).find("a").attr("href");
+
+          if (/^\d+$/.test(number) && name && link) {
+            players.push({
+              number,
+              name,
+              link: "https://npb.jp" + link
+            });
+          }
         }
       });
 
       cacheData = { players };
       saveCache(cacheFile, cacheData);
+
     } catch (err) {
-      return res.send("データ取得失敗");
+      return res.send("選手データ取得失敗");
     }
   }
 
@@ -112,19 +146,37 @@ app.get("/team/:code", async (req, res) => {
   let html = `
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <h1>${teamName}</h1>
+    <h3>${year}年度</h3>
     <form method="GET">
       <input type="number" name="number" placeholder="背番号">
       <button type="submit">検索</button>
     </form>
   `;
 
+  // ===== 背番号一覧表示 =====
+  html += "<h3>登録背番号一覧</h3><div style='display:flex;flex-wrap:wrap;'>";
+
+  players.forEach(p => {
+    html += `
+      <div style="margin:4px;padding:6px;border:1px solid #ccc;">
+        ${p.number}
+      </div>
+    `;
+  });
+
+  html += "</div><hr>";
+
+
+  // ===== 選手検索 =====
   if (numberInput) {
+
     const player = players.find(p => p.number === numberInput);
 
     if (!player) {
       html += "<p>選手が見つかりません</p>";
     } else {
-      let playerDetails = loadCache(`${code}_${numberInput}.json`);
+
+      let playerDetails = loadCache(`${code}_${numberInput}_${year}.json`);
 
       if (!playerDetails) {
         try {
@@ -137,15 +189,15 @@ app.get("/team/:code", async (req, res) => {
           const age = calculateAge(birth);
 
           playerDetails = { birth, heightWeight, position, age };
-          saveCache(`${code}_${numberInput}.json`, playerDetails);
+          saveCache(`${code}_${numberInput}_${year}.json`, playerDetails);
+
         } catch (err) {
-          console.log("選手詳細取得失敗:", err.message);
+          console.log("選手詳細取得失敗");
         }
       }
 
       if (playerDetails) {
         html += `
-          <hr>
           <h2>選手詳細</h2>
           <p>名前: ${player.name}</p>
           <p>ポジション: ${playerDetails.position}</p>
@@ -155,45 +207,53 @@ app.get("/team/:code", async (req, res) => {
         `;
       }
 
+
       // ===== ヤクルト応援歌 =====
       if (code === "s") {
-        let songCache = loadCache(`song_${numberInput}.json`);
-        if (!songCache) {
-          try {
-            const songRes = await axios.get("https://www.yakult-swallows.co.jp/players/song");
-            const $$$ = cheerio.load(songRes.data);
-            let foundSong = "";
 
-            $$$(".v-players-song__list-item").each((i, el) => {
-              const li = $$$(el);
-              const nameLink = li.find(".v-players-song__list-name-link").text().trim().replace(/\s/g, "");
-              const targetName = player.name.replace(/\s/g, "");
-              if (nameLink === targetName) {
-                foundSong = li
-                  .find(".v-players-song__phrase-text p")
-                  .map((j, pEl) => $$$(pEl).text().trim())
-                  .get()
-                  .join("\n");
-                return false;
-              }
-            });
+        let songError = false;
+        let foundSong = "";
 
-            songCache = { lyrics: foundSong };
-            saveCache(`song_${numberInput}.json`, songCache);
-          } catch (err) {
-            html += "<p>応援歌取得失敗</p>";
-          }
+        try {
+          const songRes = await axios.get("https://www.yakult-swallows.co.jp/players/song");
+          const $$$ = cheerio.load(songRes.data);
+
+          $$$(".v-players-song__list-item").each((i, el) => {
+            const nameText = $$$(el)
+              .find(".v-players-song__list-name-link")
+              .text()
+              .trim()
+              .replace(/\s/g, "");
+
+            const targetName = player.name.replace(/\s/g, "");
+
+            if (nameText === targetName) {
+              foundSong = $$$(el)
+                .find(".v-players-song__phrase-text p")
+                .map((j, pEl) => $$$(pEl).text().trim())
+                .get()
+                .join("\n");
+              return false;
+            }
+          });
+
+        } catch (err) {
+          songError = true;
         }
-        // キャッシュまたは取得後の歌詞表示
-        if (songCache && songCache.lyrics) {
-          html += `<h3>応援歌</h3><pre>${songCache.lyrics}</pre>`;
+
+        if (foundSong) {
+          html += `<h3>応援歌</h3><pre>${foundSong}</pre>`;
+        } else if (songError) {
+          html += "<p>応援歌取得失敗</p>";
         }
       }
-    } // else (選手が見つかった場合) の閉じ
-  } // if (numberInput) の閉じ
+
+    }
+  }
 
   html += "<br><a href='/'>戻る</a>";
   res.send(html);
 });
+
 
 module.exports = app;
