@@ -23,8 +23,17 @@ app.get("/", async (req, res) => {
   const teamCode = req.query.team;
 
   if (!teamCode || !teams[teamCode]) {
-    return res.send("チームを選択してください");
+
+  let html = "<h1>チームを選択してください</h1><ul>";
+
+  for (let code in teams) {
+    html += `<li><a href="/?team=${code}">${teams[code]}</a></li>`;
   }
+
+  html += "</ul>";
+
+  return res.send(html);
+}
 
   try {
     const url = `https://npb.jp/bis/teams/rst_${teamCode}.html`;
