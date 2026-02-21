@@ -20,8 +20,9 @@ const teams = {
 };
 
 
+
 // =========================
-// トップ
+// トップ（球団一覧＋選手一覧）
 // =========================
 app.get("/", async (req, res) => {
   const teamCode = req.query.team;
@@ -74,6 +75,7 @@ app.get("/", async (req, res) => {
 });
 
 
+
 // =========================
 // 選手詳細
 // =========================
@@ -86,6 +88,7 @@ app.get("/player", async (req, res) => {
   }
 
   try {
+    // チームページ取得
     const teamUrl = `https://npb.jp/bis/teams/rst_${teamCode}.html`;
     const teamRes = await axios.get(teamUrl);
     const $team = cheerio.load(teamRes.data);
@@ -111,12 +114,14 @@ app.get("/player", async (req, res) => {
       return res.send("選手詳細が見つかりません");
     }
 
+    // 個人ページ取得
     const playerUrl = `https://npb.jp${playerLink}`;
     const playerRes = await axios.get(playerUrl);
     const $player = cheerio.load(playerRes.data);
 
     const profile = [];
 
+    // プロフィールテーブルのみ取得
     $player("table").first().find("tr").each((i, el) => {
       const th = $player(el).find("th").text().trim();
       const td = $player(el).find("td").text().trim();
@@ -152,44 +157,58 @@ app.get("/player", async (req, res) => {
     html += "</ul>";
 
     // =========================
-// 🔥 ヤクルト応援歌取得（一覧ページから抽出）
-// =========================
-if (teamCode === "s") {
-  try {
-    const songPage = await axios.get("https://www.yakult-swallows.co.jp/players/song");
-    const $song = cheerio.load(songPage.data);
+    // ヤクルト応援歌取得
+    // =========================
+    if (teamCode === "s") {
+      try {
+        const songPage = await axios.get(
+          "https://www.yakult-swallows.co.jp/players/song",
+          {
+            headers: { "User-Agent": "Mozilla/5.0" },
+            timeout: 5000
+          }
+        );
 
-    let lyrics = [];
+        const $song = cheerio.load(songPage.data);
+        let lyrics = [];
 
-    $song(".v-players-song__list-item").each((i, el) => {
-      const num = $song(el)
-        .find(".v-players-song__list-number")
-        .text()
-        .trim();
+        $song(".v-players-song__list-item").each((i, el) => {
+          const num = $song(el)
+            .find(".v-players-song__list-number")
+            .text()
+            .trim()
+            .replace(/^0+/, "");
 
-      // 背番号は 00 などあるのでゼロ埋め対応
-      const normalizedNum = num.replace(/^0+/, "");
+          if (num === number) {
+            $song(el)
+              .find(".v-players-song__phrase-text p")
+              .each((j, p) => {
+                lyrics.push($song(p).text().trim());
+              });
+          }
+        });
 
-      if (normalizedNum === number) {
-        $song(el)
-          .find(".v-players-song__phrase-text p")
-          .each((j, p) => {
-            lyrics.push($song(p).text().trim());
+        if (lyrics.length > 0) {
+          html += "<h2>応援歌</h2>";
+          lyrics.forEach(line => {
+            html += `<p>${line}</p>`;
           });
-      }
-    });
+        }
 
-    if (lyrics.length > 0) {
-      html += "<h2>応援歌</h2><div>";
-      lyrics.forEach(line => {
-        html += `<p>${line}</p>`;
-      });
-      html += "</div>";
+      } catch (err) {
+        console.error("応援歌取得失敗:", err.message);
+      }
     }
 
+    html += `<br><a href="/?team=${teamCode}">← 戻る</a>`;
+
+    res.send(html);
+
   } catch (err) {
-    console.error("応援歌取得失敗");
+    console.error(err);
+    res.send("選手詳細取得失敗");
   }
-}
+});
+
 
 module.exports = app;
