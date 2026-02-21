@@ -22,19 +22,16 @@ const teams = {
 
 
 // =========================
-// トップページ（球団選択＋選手一覧）
+// トップ（球団選択＋選手一覧）
 // =========================
 app.get("/", async (req, res) => {
   const teamCode = req.query.team;
 
-  // チーム未選択
   if (!teamCode || !teams[teamCode]) {
     let html = "<h1>チームを選択してください</h1><ul>";
-
     for (let code in teams) {
       html += `<li><a href="/?team=${code}">${teams[code]}</a></li>`;
     }
-
     html += "</ul>";
     return res.send(html);
   }
@@ -58,12 +55,7 @@ app.get("/", async (req, res) => {
       }
     });
 
-    if (players.length === 0) {
-      return res.send("選手データ取得失敗");
-    }
-
     let html = `<h1>${teams[teamCode]}</h1><ul>`;
-
     players.forEach(p => {
       html += `
         <li>
@@ -73,8 +65,8 @@ app.get("/", async (req, res) => {
         </li>
       `;
     });
-
     html += "</ul>";
+
     res.send(html);
 
   } catch (err) {
@@ -86,7 +78,7 @@ app.get("/", async (req, res) => {
 
 
 // =========================
-// 選手詳細ページ
+// 選手詳細（位置〜ドラフト全部表示＋年齢）
 // =========================
 app.get("/player", async (req, res) => {
   const teamCode = req.query.team;
@@ -97,7 +89,7 @@ app.get("/player", async (req, res) => {
   }
 
   try {
-    // ① チームページ取得
+    // チームページ取得
     const teamUrl = `https://npb.jp/bis/teams/rst_${teamCode}.html`;
     const teamRes = await axios.get(teamUrl);
     const $team = cheerio.load(teamRes.data);
@@ -105,7 +97,7 @@ app.get("/player", async (req, res) => {
     let playerLink = null;
     let playerName = "";
 
-    // ② 背番号一致のリンク取得
+    // 背番号一致の選手リンク取得
     $team("table tr").each((i, el) => {
       const tds = $team(el).find("td");
       if (tds.length >= 2) {
@@ -124,14 +116,14 @@ app.get("/player", async (req, res) => {
       return res.send("選手詳細が見つかりません");
     }
 
-    // ③ 個人ページ取得
+    // 個人ページ取得
     const playerUrl = `https://npb.jp${playerLink}`;
     const playerRes = await axios.get(playerUrl);
     const $player = cheerio.load(playerRes.data);
 
     const profile = [];
 
-    // ④ プロフィールテーブル取得
+    // プロフィール表を全部取得
     $player("table tr").each((i, el) => {
       const th = $player(el).find("th").text().trim();
       const td = $player(el).find("td").text().trim();
@@ -140,14 +132,33 @@ app.get("/player", async (req, res) => {
       }
     });
 
+    // 年齢計算
+    let age = "";
+    const birthRow = profile.find(p => p.th.includes("生年月日"));
+
+    if (birthRow) {
+      const birthDate = new Date(
+        birthRow.td.replace(/年|月/g, "-").replace(/日/, "")
+      );
+      const today = new Date();
+      age = today.getFullYear() - birthDate.getFullYear();
+      const m = today.getMonth() - birthDate.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+    }
+
     let html = `<h1>${playerName}</h1><ul>`;
 
     profile.forEach(p => {
       html += `<li>${p.th}: ${p.td}</li>`;
     });
 
-    html += "</ul>";
-    html += `<a href="/?team=${teamCode}">← 戻る</a>`;
+    if (age !== "") {
+      html += `<li>年齢: ${age}歳</li>`;
+    }
+
+    html += `</ul><a href="/?team=${teamCode}">← 戻る</a>`;
 
     res.send(html);
 
@@ -156,7 +167,5 @@ app.get("/player", async (req, res) => {
     res.send("選手詳細取得失敗");
   }
 });
-
-
 
 module.exports = app;
