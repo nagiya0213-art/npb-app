@@ -26,6 +26,7 @@ const teams = {
 // =========================
 app.get("/", async (req, res) => {
   const teamCode = req.query.team;
+  const filterPos = req.query.pos || "";
 
   if (!teamCode || !teams[teamCode]) {
     let html = "<h1>チームを選択してください</h1><ul>";
@@ -45,36 +46,62 @@ app.get("/", async (req, res) => {
 
     $("table tr").each((i, el) => {
       const tds = $(el).find("td");
-      if (tds.length >= 2) {
+      if (tds.length >= 4) {
         const number = tds.eq(0).text().trim();
         const name = tds.eq(1).text().trim();
+        const position = tds.eq(3).text().trim();
+
         if (/^\d+$/.test(number) && name) {
-          players.push({ number, name });
+          players.push({ number, name, position });
         }
       }
     });
 
+    const positions = [...new Set(players.map(p => p.position))];
+
+    const filteredPlayers = filterPos
+      ? players.filter(p => p.position === filterPos)
+      : players;
+
     let html = `
       <h1>${teams[teamCode]}</h1>
 
+      <!-- 背番号検索 -->
       <form action="/player" method="get">
         <input type="hidden" name="team" value="${teamCode}">
         <input type="number" name="num" placeholder="背番号を入力" required>
-        <button type="submit">検索</button>
+        <button type="submit">背番号検索</button>
+      </form>
+
+      <!-- 名前検索 -->
+      <form action="/player" method="get">
+        <input type="hidden" name="team" value="${teamCode}">
+        <input type="text" name="name" placeholder="名前を入力" required>
+        <button type="submit">名前検索</button>
+      </form>
+
+      <!-- ポジションフィルター -->
+      <form method="get" action="/">
+        <input type="hidden" name="team" value="${teamCode}">
+        <select name="pos">
+          <option value="">全ポジション</option>
+    `;
+
+    positions.forEach(pos => {
+      html += `<option value="${pos}" ${pos === filterPos ? "selected" : ""}>${pos}</option>`;
+    });
+
+    html += `
+        </select>
+        <button type="submit">絞り込み</button>
       </form>
 
       <hr>
       <ul>
     `;
 
-    players.forEach(p => {
-      html += `
-        <li>
-          <a href="/player?team=${teamCode}&num=${p.number}">
-            ${p.number} ${p.name}
-          </a>
-        </li>
-      `;
+    filteredPlayers.forEach(p => {
+      html += `<li>${p.number} ${p.name}（${p.position}）</li>`;
     });
 
     html += "</ul>";
@@ -95,13 +122,13 @@ app.get("/", async (req, res) => {
 app.get("/player", async (req, res) => {
   const teamCode = req.query.team;
   const number = req.query.num;
+  const nameQuery = req.query.name;
 
-  if (!teamCode || !number) {
-    return res.send("選手情報が不足しています");
+  if (!teamCode) {
+    return res.send("情報が不足しています");
   }
 
   try {
-    // チームページ取得
     const teamUrl = `https://npb.jp/bis/teams/rst_${teamCode}.html`;
     const teamRes = await axios.get(teamUrl);
     const $team = cheerio.load(teamRes.data);
@@ -113,39 +140,47 @@ app.get("/player", async (req, res) => {
       const tds = $team(el).find("td");
       if (tds.length >= 2) {
         const num = tds.eq(0).text().trim();
-        if (num === number) {
-          const aTag = tds.eq(1).find("a");
-          if (aTag.length > 0) {
-            playerLink = aTag.attr("href");
-            playerName = aTag.text().trim();
-          }
+        const aTag = tds.eq(1).find("a");
+        const name = aTag.text().trim();
+
+        if ((number && num === number) ||
+            (nameQuery && name.includes(nameQuery))) {
+          playerLink = aTag.attr("href");
+          playerName = name;
         }
       }
     });
 
     if (!playerLink) {
-      return res.send("その背番号の選手は見つかりません");
+      return res.send("選手が見つかりません");
     }
 
-    // 個人ページ取得
     const playerUrl = `https://npb.jp${playerLink}`;
     const playerRes = await axios.get(playerUrl);
     const $player = cheerio.load(playerRes.data);
 
     const profile = [];
 
-    // プロフィールテーブルのみ取得
     $player("table").first().find("tr").each((i, el) => {
       const th = $player(el).find("th").text().trim();
       const td = $player(el).find("td").text().trim();
-      if (th && td) {
+
+      if (
+        th === "ポジション" ||
+        th === "投打" ||
+        th === "身長／体重" ||
+        th === "生年月日" ||
+        th === "出身地" ||
+        th === "経歴" ||
+        th === "ドラフト"
+      ) {
         profile.push({ th, td });
       }
     });
 
     // 年齢計算
     let age = "";
-    const birthRow = profile.find(p => p.th.includes("生年月日"));
+    const birthRow = profile.find(p => p.th === "生年月日");
     if (birthRow) {
       const birthDate = new Date(
         birthRow.td.replace(/年|月/g, "-").replace(/日/, "")
@@ -159,7 +194,6 @@ app.get("/player", async (req, res) => {
     }
 
     let html = `<h1>${playerName}</h1><ul>`;
-
     profile.forEach(p => {
       html += `<li>${p.th}: ${p.td}</li>`;
     });
@@ -171,7 +205,7 @@ app.get("/player", async (req, res) => {
     html += "</ul>";
 
     // =========================
-    // ヤクルト応援歌取得
+    // ヤクルト応援歌
     // =========================
     if (teamCode === "s") {
       try {
@@ -186,7 +220,7 @@ app.get("/player", async (req, res) => {
         const $song = cheerio.load(songPage.data);
         let lyrics = [];
 
-        const normalizedPlayerName = playerName.replace(/\s/g, "");
+        const normalizedName = playerName.replace(/\s/g, "");
 
         $song(".v-players-song__list-item").each((i, el) => {
           const songName = $song(el)
@@ -195,7 +229,7 @@ app.get("/player", async (req, res) => {
             .trim()
             .replace(/\s/g, "");
 
-          if (songName === normalizedPlayerName) {
+          if (songName === normalizedName) {
             $song(el)
               .find(".v-players-song__phrase-text p")
               .each((j, p) => {
@@ -210,7 +244,6 @@ app.get("/player", async (req, res) => {
             html += `<p>${line}</p>`;
           });
         }
-
       } catch (err) {
         console.error("応援歌取得失敗:", err.message);
       }
