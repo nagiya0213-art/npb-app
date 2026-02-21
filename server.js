@@ -46,12 +46,14 @@ app.get("/", async (req, res) => {
 
     $("table tr").each((i, el) => {
       const tds = $(el).find("td");
+
+      // 背番号 / 氏名 / 年齢 / ポジション
       if (tds.length >= 4) {
         const number = tds.eq(0).text().trim();
-        const position = tds.eq(3).text().trim();
+        const position = tds.eq(3).text().trim(); // ← 正しいポジション
 
         if (/^\d+$/.test(number)) {
-          players.push({ number, position }); // ← 文字列のまま
+          players.push({ number, position }); // 文字列保持
         }
       }
     });
@@ -101,6 +103,7 @@ app.get("/", async (req, res) => {
       <ul>
     `;
 
+    // 背番号のみ表示
     filteredPlayers.forEach(p => {
       html += `<li>${p.number}</li>`;
     });
@@ -110,6 +113,7 @@ app.get("/", async (req, res) => {
     res.send(html);
 
   } catch (err) {
+    console.error(err);
     res.send("取得失敗");
   }
 });
@@ -117,20 +121,21 @@ app.get("/", async (req, res) => {
 
 
 /* =========================
-   選手詳細
+   選手検索・詳細
 ========================= */
 app.get("/player", async (req, res) => {
   const teamCode = req.query.team;
   const number = req.query.num;
   const nameQuery = req.query.name;
-  const linkDirect = req.query.link;
+  const directLink = req.query.link;
 
   if (!teamCode) return res.send("情報不足");
 
   try {
-    // 直接リンクがある場合
-    if (linkDirect) {
-      return await renderPlayer(linkDirect, teamCode, res);
+
+    // 直接リンク指定の場合
+    if (directLink) {
+      return await renderPlayer(directLink, teamCode, res);
     }
 
     const teamUrl = `https://npb.jp/bis/teams/rst_${teamCode}.html`;
@@ -160,6 +165,7 @@ app.get("/player", async (req, res) => {
       return res.send("選手が見つかりません");
     }
 
+    // 複数ヒット
     if (matches.length > 1 && nameQuery) {
       let html = "<h1>該当選手一覧</h1><ul>";
       matches.forEach(p => {
@@ -168,7 +174,8 @@ app.get("/player", async (req, res) => {
             <a href="/player?team=${teamCode}&link=${p.link}">
               ${p.name}
             </a>
-          </li>`;
+          </li>
+        `;
       });
       html += "</ul>";
       return res.send(html);
@@ -176,7 +183,8 @@ app.get("/player", async (req, res) => {
 
     await renderPlayer(matches[0].link, teamCode, res);
 
-  } catch {
+  } catch (err) {
+    console.error(err);
     res.send("取得失敗");
   }
 });
@@ -184,18 +192,20 @@ app.get("/player", async (req, res) => {
 
 
 /* =========================
-   詳細描画関数
+   詳細描画
 ========================= */
 async function renderPlayer(link, teamCode, res) {
+
   const playerUrl = `https://npb.jp${link}`;
   const playerRes = await axios.get(playerUrl);
   const $player = cheerio.load(playerRes.data);
 
-  const playerName = $player("h1").first().text().trim();
+  // 正しい選手名取得
+  const playerName = $player(".ttl-player").first().text().trim();
 
   const profile = [];
 
-  $player("table").first().find("tr").each((i, el) => {
+  $player("tbody tr").each((i, el) => {
     const th = $player(el).find("th").text().trim();
     const td = $player(el).find("td").text().trim();
 
@@ -204,7 +214,6 @@ async function renderPlayer(link, teamCode, res) {
       th === "投打" ||
       th === "身長／体重" ||
       th === "生年月日" ||
-      th === "出身地" ||
       th === "経歴" ||
       th === "ドラフト"
     ) {
@@ -212,14 +221,17 @@ async function renderPlayer(link, teamCode, res) {
     }
   });
 
+  // 年齢計算
   let age = "";
   const birthRow = profile.find(p => p.th === "生年月日");
+
   if (birthRow) {
     const birthDate = new Date(
       birthRow.td.replace(/年|月/g, "-").replace(/日/, "")
     );
     const today = new Date();
     age = today.getFullYear() - birthDate.getFullYear();
+
     if (
       today.getMonth() < birthDate.getMonth() ||
       (today.getMonth() === birthDate.getMonth() &&
@@ -230,44 +242,52 @@ async function renderPlayer(link, teamCode, res) {
   }
 
   let html = `<h1>${playerName}</h1><ul>`;
+
   profile.forEach(p => {
     html += `<li>${p.th}: ${p.td}</li>`;
   });
+
   if (age) html += `<li>年齢: ${age}歳</li>`;
+
   html += "</ul>";
 
   // ヤクルト応援歌
   if (teamCode === "s") {
-    const songPage = await axios.get(
-      "https://www.yakult-swallows.co.jp/players/song",
-      { headers: { "User-Agent": "Mozilla/5.0" } }
-    );
+    try {
+      const songPage = await axios.get(
+        "https://www.yakult-swallows.co.jp/players/song",
+        { headers: { "User-Agent": "Mozilla/5.0" } }
+      );
 
-    const $song = cheerio.load(songPage.data);
-    const normalizedName = playerName.replace(/\s/g, "");
-    let lyrics = [];
+      const $song = cheerio.load(songPage.data);
+      const normalizedName = playerName.replace(/\s/g, "");
+      let lyrics = [];
 
-    $song(".v-players-song__list-item").each((i, el) => {
-      const songName = $song(el)
-        .find(".v-players-song__list-name")
-        .text()
-        .trim()
-        .replace(/\s/g, "");
+      $song(".v-players-song__list-item").each((i, el) => {
+        const songName = $song(el)
+          .find(".v-players-song__list-name")
+          .text()
+          .trim()
+          .replace(/\s/g, "");
 
-      if (songName === normalizedName) {
-        $song(el)
-          .find(".v-players-song__phrase-text p")
-          .each((j, p) => {
-            lyrics.push($song(p).text().trim());
-          });
-      }
-    });
-
-    if (lyrics.length > 0) {
-      html += "<h2>応援歌</h2>";
-      lyrics.forEach(line => {
-        html += `<p>${line}</p>`;
+        if (songName === normalizedName) {
+          $song(el)
+            .find(".v-players-song__phrase-text p")
+            .each((j, p) => {
+              lyrics.push($song(p).text().trim());
+            });
+        }
       });
+
+      if (lyrics.length > 0) {
+        html += "<h2>応援歌</h2>";
+        lyrics.forEach(line => {
+          html += `<p>${line}</p>`;
+        });
+      }
+
+    } catch {
+      console.log("応援歌取得失敗");
     }
   }
 
