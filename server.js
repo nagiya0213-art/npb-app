@@ -59,9 +59,13 @@ app.get("/", async (req, res) => {
     }
 
     let html = `<h1>${teams[teamCode]}</h1><ul>`;
-    players.forEach(p => {
-      html += `<li>${p.number} ${p.name}</li>`;
-    });
+   players.forEach(p => {
+  html += `<li>
+    <a href="/player?team=${teamCode}&num=${p.number}">
+      ${p.number} ${p.name}
+    </a>
+  </li>`;
+});
     html += "</ul>";
 
     res.send(html);
