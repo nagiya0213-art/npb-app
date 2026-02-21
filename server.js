@@ -113,7 +113,7 @@ app.get("/", async (req, res) => {
       if (p.link) {
         html += `<li>${p.number} - <a href="/player?team=${teamCode}&direct=${encodeURIComponent(p.link)}">${p.name}</a></li>`;
       } else {
-        html += `<li>${p.number} - ${p.name} (リンクなし)</li>`;
+        html += `<li>${p.number} - ${p.name} (監督)</li>`;
       }
     });
 
