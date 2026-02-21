@@ -220,8 +220,4 @@ app.get("/player", async (req, res) => {
   }
 });
 
-// サーバー起動用の設定例（必要に応じて）
-// const PORT = 3000;
-// app.listen(PORT, () => console.log(`Server started on http://localhost:${PORT}`));
-
 module.exports = app;
