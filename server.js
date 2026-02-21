@@ -20,7 +20,6 @@ const teams = {
 };
 
 
-
 // =========================
 // トップ
 // =========================
@@ -48,7 +47,6 @@ app.get("/", async (req, res) => {
       if (tds.length >= 2) {
         const number = tds.eq(0).text().trim();
         const name = tds.eq(1).text().trim();
-
         if (/^\d+$/.test(number) && name) {
           players.push({ number, name });
         }
@@ -76,9 +74,8 @@ app.get("/", async (req, res) => {
 });
 
 
-
 // =========================
-// 選手詳細（位置〜ドラフトのみ＋年齢）
+// 選手詳細
 // =========================
 app.get("/player", async (req, res) => {
   const teamCode = req.query.team;
@@ -120,7 +117,6 @@ app.get("/player", async (req, res) => {
 
     const profile = [];
 
-    // 🔥 一番最初のテーブルだけ取得
     $player("table").first().find("tr").each((i, el) => {
       const th = $player(el).find("th").text().trim();
       const td = $player(el).find("td").text().trim();
@@ -132,7 +128,6 @@ app.get("/player", async (req, res) => {
     // 年齢計算
     let age = "";
     const birthRow = profile.find(p => p.th.includes("生年月日"));
-
     if (birthRow) {
       const birthDate = new Date(
         birthRow.td.replace(/年|月/g, "-").replace(/日/, "")
@@ -146,7 +141,6 @@ app.get("/player", async (req, res) => {
     }
 
     let html = `<h1>${playerName}</h1><ul>`;
-
     profile.forEach(p => {
       html += `<li>${p.th}: ${p.td}</li>`;
     });
@@ -155,14 +149,47 @@ app.get("/player", async (req, res) => {
       html += `<li>年齢: ${age}歳</li>`;
     }
 
-    html += `</ul><a href="/?team=${teamCode}">← 戻る</a>`;
+    html += "</ul>";
 
-    res.send(html);
+    // =========================
+// 🔥 ヤクルト応援歌取得（一覧ページから抽出）
+// =========================
+if (teamCode === "s") {
+  try {
+    const songPage = await axios.get("https://www.yakult-swallows.co.jp/players/song");
+    const $song = cheerio.load(songPage.data);
+
+    let lyrics = [];
+
+    $song(".v-players-song__list-item").each((i, el) => {
+      const num = $song(el)
+        .find(".v-players-song__list-number")
+        .text()
+        .trim();
+
+      // 背番号は 00 などあるのでゼロ埋め対応
+      const normalizedNum = num.replace(/^0+/, "");
+
+      if (normalizedNum === number) {
+        $song(el)
+          .find(".v-players-song__phrase-text p")
+          .each((j, p) => {
+            lyrics.push($song(p).text().trim());
+          });
+      }
+    });
+
+    if (lyrics.length > 0) {
+      html += "<h2>応援歌</h2><div>";
+      lyrics.forEach(line => {
+        html += `<p>${line}</p>`;
+      });
+      html += "</div>";
+    }
 
   } catch (err) {
-    console.error(err);
-    res.send("選手詳細取得失敗");
+    console.error("応援歌取得失敗");
   }
-});
+}
 
 module.exports = app;
