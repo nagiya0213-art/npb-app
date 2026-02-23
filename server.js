@@ -7,7 +7,6 @@ const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
 
 const app = express();
-
 app.set('trust proxy', 1);
 
 app.use(session({
@@ -59,9 +58,11 @@ const headerHtml = `
     .unofficial-banner { background-color: #fff; border: 3px solid #d32f2f; color: #d32f2f; text-align: center; padding: 10px; font-weight: 900; font-size: 1.8rem; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
     .team-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; list-style: none; padding: 0; }
     .team-item { display: flex; align-items: center; justify-content: flex-start; height: 80px; background-color: white; border: 1px solid #ddd; border-radius: 12px; text-decoration: none; color: #333; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.05); padding-left: 15px; background-repeat: no-repeat; background-position: right -15px center; background-size: 90px; }
-    .card { background: white; padding: 15px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); position: relative; }
-    .team-icon-detail { position: absolute; top: 15px; left: 15px; width: 50px; height: auto; z-index: 2; }
+    .card { background: white; padding: 15px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); position: relative; overflow: hidden; }
+    .team-icon-detail { position: absolute; top: 15px; left: 15px; width: 45px; height: auto; z-index: 2; opacity: 0.8; }
     .bg-number { position: absolute; top: -10px; right: 10px; font-size: 5rem; font-weight: 900; color: rgba(0, 0, 0, 0.05); z-index: 0; pointer-events: none; }
+    .player-photo-wrap { text-align: center; position: relative; z-index: 1; margin: 10px 0; }
+    .player-photo { width: 150px; height: auto; border-radius: 10px; border: 3px solid #eee; background: #fff; }
     input[type="text"], select, button { width: 100%; padding: 14px; margin-top: 8px; font-size: 16px; border: 1px solid #ccc; border-radius: 10px; box-sizing: border-box; }
     button { background-color: #007bff; color: white; border: none; font-weight: bold; cursor: pointer; }
     .player-list { background: white; border-radius: 15px; padding: 0; list-style: none; overflow: hidden; }
@@ -111,29 +112,22 @@ app.get("/", ensureAuthenticated, async (req, res) => {
     const response = await axios.get(`https://npb.jp/bis/teams/rst_${teamCode}.html`);
     const $ = cheerio.load(response.data);
     let players = [];
-
     $("table.rosterlisttbl").each((_, table) => {
       let currentPosition = "";
       $(table).find("tr").each((i, el) => {
-        if ($(el).hasClass("rosterMainHead")) {
-          currentPosition = $(el).find(".rosterPos").text().trim();
-        }
-        // 監督・コーチ（rosterCoach）と選手（rosterPlayer）を識別
+        if ($(el).hasClass("rosterMainHead")) { currentPosition = $(el).find(".rosterPos").text().trim(); }
         const isCoach = $(el).hasClass("rosterCoach");
         const isPlayer = $(el).hasClass("rosterPlayer");
-
         if (isCoach || isPlayer) {
           const number = $(el).find("td").eq(0).text().trim();
           const nameElem = $(el).find(".rosterRegister");
           const name = nameElem.text().trim();
-          // 選手の場合のみリンクを保持、コーチ・監督の場合はリンクなし
           const link = isPlayer ? nameElem.find("a").attr("href") : null;
           if (name) players.push({ number, name, link, position: currentPosition });
         }
       });
     });
 
-    // 並び替えロジック
     players.sort((a, b) => {
       const isAEx = a.number.length >= 3;
       const isBEx = b.number.length >= 3;
@@ -147,36 +141,14 @@ app.get("/", ensureAuthenticated, async (req, res) => {
     if (posFilter) players = players.filter(p => p.position === posFilter);
 
     let html = headerHtml + pageHeader + `<h1 style="text-align:center;">${teams[teamCode].name}</h1><a href="/" class="back-link">← チーム選択へ戻る</a>
-      <div class="card">
-        <form method="get" action="/">
-          <input type="hidden" name="team" value="${teamCode}">
-          <input type="text" name="q" placeholder="選手名で検索" value="${searchQuery}">
-          <input type="text" name="num" placeholder="背番号で検索" value="${numQuery}">
-          <button type="submit" style="margin-top:10px;">検索実行</button>
-        </form>
-      </div>
-      <div class="card">
-        <p style="margin:0 0 5px 0; font-size:0.8rem; color:#666;">ポジションで絞り込み</p>
-        <form method="get" action="/" id="posForm">
-          <input type="hidden" name="team" value="${teamCode}">
-          <input type="hidden" name="q" value="${searchQuery}">
-          <input type="hidden" name="num" value="${numQuery}">
-          <select name="pos" onchange="document.getElementById('posForm').submit()">
-            <option value="">全てのポジション</option>
-            ${['監督・コーチ', '投手', '捕手', '内野手', '外野手'].map(p => `<option value="${p}" ${posFilter === p ? 'selected' : ''}>${p}</option>`).join('')}
-          </select>
-        </form>
-      </div>
+      <div class="card"><form method="get" action="/"><input type="hidden" name="team" value="${teamCode}"><input type="text" name="q" placeholder="選手名で検索" value="${searchQuery}"><input type="text" name="num" placeholder="背番号で検索" value="${numQuery}"><button type="submit" style="margin-top:10px;">検索実行</button></form></div>
+      <div class="card"><p style="margin:0 0 5px 0; font-size:0.8rem; color:#666;">ポジションで絞り込み</p><form method="get" action="/" id="posForm"><input type="hidden" name="team" value="${teamCode}"><input type="hidden" name="q" value="${searchQuery}"><input type="hidden" name="num" value="${numQuery}"><select name="pos" onchange="document.getElementById('posForm').submit()"><option value="">全てのポジション</option>${['監督・コーチ', '投手', '捕手', '内野手', '外野手'].map(p => `<option value="${p}" ${posFilter === p ? 'selected' : ''}>${p}</option>`).join('')}</select></form></div>
       <ul class="player-list">`;
 
     players.forEach(p => {
       html += `<li><span style="width:45px; font-weight:bold; color:#888;">${p.number}</span>`;
-      // リンクがある（選手）場合のみ <a> タグを出し、それ以外（コーチ等）はテキストのみ
-      if (p.link) {
-        html += `<a href="/player?team=${teamCode}&direct=${encodeURIComponent(p.link)}&num=${p.number}">${p.name}</a>`;
-      } else {
-        html += `<span style="flex-grow:1; font-weight:bold;">${p.name}</span>`;
-      }
+      if (p.link) { html += `<a href="/player?team=${teamCode}&direct=${encodeURIComponent(p.link)}&num=${p.number}">${p.name}</a>`; }
+      else { html += `<span style="flex-grow:1; font-weight:bold;">${p.name}</span>`; }
       html += `<span style="font-size:0.8rem; color:#999; margin-left:10px;">${p.position}</span></li>`;
     });
     res.send(html + "</ul>");
@@ -190,6 +162,11 @@ app.get("/player", ensureAuthenticated, async (req, res) => {
   try {
     const pRes = await axios.get(`https://npb.jp${directLink}`);
     const $p = cheerio.load(pRes.data);
+
+    // 【修正】選手写真のURLを取得
+    const photoSrc = $p("#pc_v_photo img").attr("src");
+    const photoUrl = photoSrc ? (photoSrc.startsWith("http") ? photoSrc : `https:${photoSrc}`) : null;
+
     const targetName = $p("div#pc_v_name li#pc_v_name").text().trim() || $p("h1").text().replace("日本野球機構オフィシャルサイト","").trim();
     const targetKana = $p("#pc_v_kana").text().trim();
 
@@ -208,10 +185,14 @@ app.get("/player", ensureAuthenticated, async (req, res) => {
       <div class="card">
         <img src="${logoUrl}" class="team-icon-detail">
         <div class="bg-number">${number}</div>
+        
         <div style="text-align:center; position:relative; z-index:1; margin-bottom:15px;">
           <p style="margin:0; font-size:0.85rem; color:#888; letter-spacing:0.1em;">${targetKana}</p>
-          <h1 style="margin:0; font-size:1.8rem;">${targetName}</h1>
+          <h1 style="margin:0 0 10px 0; font-size:1.8rem;">${targetName}</h1>
+          
+          ${photoUrl ? `<div class="player-photo-wrap"><img src="${photoUrl}" class="player-photo" alt="${targetName}"></div>` : ""}
         </div>
+
         <ul style="position:relative; z-index:1; list-style:none; padding:0;">`;
     profile.forEach(p => html += `<li style="padding:10px 0; border-bottom:1px solid #eee;"><strong>${p.th}</strong>: ${p.td}</li>`);
     html += "</ul></div>";
@@ -226,11 +207,7 @@ app.get("/player", ensureAuthenticated, async (req, res) => {
           if (songPlayerName === normName || songPlayerName.includes(normName)) {
             const lyricsHtml = $s(el).find(".v-players-song__phrase-text").html();
             if (lyricsHtml) {
-              html += `
-                <div class="card" style="background:#fffde7; border-left: 5px solid #001943;">
-                  <h3 style="margin-top:0; color:#001943; border-bottom:1px solid #001943; display:inline-block;">球団公認 応援歌</h3>
-                  <div class="song-lyrics" style="margin-top:10px;">${lyricsHtml}</div>
-                </div>`;
+              html += `<div class="card" style="background:#fffde7; border-left: 5px solid #001943;"><h3 style="margin-top:0; color:#001943; border-bottom:1px solid #001943; display:inline-block;">球団公認 応援歌</h3><div class="song-lyrics" style="margin-top:10px;">${lyricsHtml}</div></div>`;
             }
           }
         });
