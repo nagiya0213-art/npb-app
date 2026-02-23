@@ -8,10 +8,8 @@ const GoogleStrategy = require("passport-google-oauth20").Strategy;
 
 const app = express();
 
-// Vercel/HTTPSプロキシ対応
 app.set('trust proxy', 1);
 
-// --- 認証の設定 ---
 app.use(session({
   secret: process.env.SESSION_SECRET || 'npb-secret',
   resave: false,
@@ -43,7 +41,6 @@ const ensureAuthenticated = (req, res, next) => {
   res.redirect("/login");
 };
 
-// --- ヘルパー関数・スタイル ---
 const calculateAge = (dateStr) => {
   if (!dateStr) return "";
   const match = dateStr.match(/(\d+)年(\d+)月(\d+)日/);
@@ -83,8 +80,6 @@ const teams = {
   m: { name: "千葉ロッテマリーンズ" }, f: { name: "北海道日本ハムファイターズ" }, b: { name: "オリックス・バファローズ" }
 };
 
-// --- ルート設定 ---
-
 app.get("/login", (req, res) => {
   res.send('<div style="text-align:center; padding-top:100px; font-family:sans-serif;"><h1>管理専用名鑑</h1><a href="/auth/google" style="display:inline-block; padding:15px 25px; background:#4285F4; color:white; text-decoration:none; border-radius:5px; font-weight:bold;">Googleでログイン</a></div>');
 });
@@ -117,7 +112,6 @@ app.get("/", ensureAuthenticated, async (req, res) => {
     const $ = cheerio.load(response.data);
     let players = [];
 
-    // ポジション取得を含めたスクレイピング
     $("table.rosterlisttbl").each((_, table) => {
       let currentPosition = "";
       $(table).find("tr").each((i, el) => {
@@ -134,24 +128,18 @@ app.get("/", ensureAuthenticated, async (req, res) => {
       });
     });
 
-    // 背番号順の並び替え（1-2桁を上、3桁を下にまとめる）
+    // 背番号の並び替え（文字列として扱うが、3桁を育成として下にまとめる）
     players.sort((a, b) => {
-      const numA = parseInt(a.number) || 0;
-      const numB = parseInt(b.number) || 0;
-      const isAThreeDigits = numA >= 100;
-      const isBThreeDigits = numB >= 100;
-
-      if (isAThreeDigits && !isBThreeDigits) return 1;
-      if (!isAThreeDigits && isBThreeDigits) return -1;
-      return numA - numB;
+      const isAEx = a.number.length >= 3; // 012や100など3文字以上を育成扱い
+      const isBEx = b.number.length >= 3;
+      if (isAEx && !isBEx) return 1;
+      if (!isAEx && isBEx) return -1;
+      return parseInt(a.number) - parseInt(b.number); // 同じカテゴリ内では数値順
     });
 
-    // フィルタリング
     if (searchQuery) players = players.filter(p => p.name.includes(searchQuery));
     if (numQuery) players = players.filter(p => p.number === numQuery);
     if (posFilter) players = players.filter(p => p.position === posFilter);
-
-    const positions = [...new Set(players.map(p => p.position))].filter(Boolean);
 
     let html = headerHtml + pageHeader + `<h1 style="text-align:center;">${teams[teamCode].name}</h1><a href="/" class="back-link">← チーム選択へ戻る</a>
       <div class="card">
@@ -159,17 +147,25 @@ app.get("/", ensureAuthenticated, async (req, res) => {
           <input type="hidden" name="team" value="${teamCode}">
           <input type="text" name="q" placeholder="選手名で検索" value="${searchQuery}">
           <input type="text" name="num" placeholder="背番号で検索" value="${numQuery}">
-          <select name="pos" style="margin-top:10px;">
+          <button type="submit" style="margin-top:10px;">検索実行</button>
+        </form>
+      </div>
+      <div class="card">
+        <p style="margin:0 0 5px 0; font-size:0.8rem; color:#666;">ポジションで絞り込み</p>
+        <form method="get" action="/" id="posForm">
+          <input type="hidden" name="team" value="${teamCode}">
+          <input type="hidden" name="q" value="${searchQuery}">
+          <input type="hidden" name="num" value="${numQuery}">
+          <select name="pos" onchange="document.getElementById('posForm').submit()">
             <option value="">全てのポジション</option>
             ${['投手', '捕手', '内野手', '外野手'].map(p => `<option value="${p}" ${posFilter === p ? 'selected' : ''}>${p}</option>`).join('')}
           </select>
-          <button type="submit" style="margin-top:10px;">検索実行</button>
         </form>
       </div>
       <ul class="player-list">`;
 
     players.forEach(p => {
-      html += `<li><span style="width:40px; font-weight:bold; color:#888;">${p.number}</span>
+      html += `<li><span style="width:45px; font-weight:bold; color:#888;">${p.number}</span>
         <a href="/player?team=${teamCode}&direct=${encodeURIComponent(p.link)}&num=${p.number}">${p.name}</a>
         <span style="font-size:0.8rem; color:#999; margin-left:10px;">${p.position}</span></li>`;
     });
@@ -184,7 +180,6 @@ app.get("/player", ensureAuthenticated, async (req, res) => {
   try {
     const pRes = await axios.get(`https://npb.jp${directLink}`);
     const $p = cheerio.load(pRes.data);
-
     const targetName = $p("div#pc_v_name li#pc_v_name").text().trim() || $p("h1").text().replace("日本野球機構オフィシャルサイト","").trim();
     const targetKana = $p("#pc_v_kana").text().trim();
 
@@ -231,7 +226,6 @@ app.get("/player", ensureAuthenticated, async (req, res) => {
         });
       } catch (e) {}
     }
-
     res.send(html + `<a href="/?team=${teamCode}" class="back-link">← 一覧に戻る</a>`);
   } catch (err) { res.send("詳細取得失敗"); }
 });
