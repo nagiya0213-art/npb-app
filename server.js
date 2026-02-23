@@ -65,13 +65,14 @@ const headerHtml = `
     .card { background: white; padding: 15px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); position: relative; }
     .team-icon-detail { position: absolute; top: 15px; left: 15px; width: 50px; height: auto; z-index: 2; }
     .bg-number { position: absolute; top: -10px; right: 10px; font-size: 5rem; font-weight: 900; color: rgba(0, 0, 0, 0.05); z-index: 0; pointer-events: none; }
-    input[type="text"], select, button { width: 100%; padding: 14px; margin-top: 8px; font-size: 16px; border: 1px solid #ccc; border-radius: 10px; box-sizing: border-box; }
+    input[type="text"], button { width: 100%; padding: 14px; margin-top: 8px; font-size: 16px; border: 1px solid #ccc; border-radius: 10px; box-sizing: border-box; }
     button { background-color: #007bff; color: white; border: none; font-weight: bold; cursor: pointer; }
     .player-list { background: white; border-radius: 15px; padding: 0; list-style: none; overflow: hidden; }
     .player-list li { padding: 15px; border-bottom: 1px solid #eee; display: flex; align-items: center; }
     .player-list a { text-decoration: none; color: #007bff; flex-grow: 1; font-weight: bold; }
     .back-link { display: block; text-align: center; margin: 20px 0; text-decoration: none; color: #007bff; font-weight: bold; }
     .logout-btn { display: block; text-align: right; margin-bottom: 10px; font-size: 0.8rem; color: #999; text-decoration: none; }
+    .song-lyrics p { margin: 5px 0; font-weight: bold; color: #001943; }
   </style>
 `;
 
@@ -95,7 +96,6 @@ app.get("/logout", (req, res, next) => {
   req.logout((err) => { if (err) return next(err); res.redirect("/login"); });
 });
 
-// メインページ（チーム選択・検索・一覧）
 app.get("/", ensureAuthenticated, async (req, res) => {
   const teamCode = req.query.team;
   const searchQuery = (req.query.q || "").trim();
@@ -115,7 +115,6 @@ app.get("/", ensureAuthenticated, async (req, res) => {
     const response = await axios.get(`https://npb.jp/bis/teams/rst_${teamCode}.html`);
     const $ = cheerio.load(response.data);
     let players = [];
-
     $("tr.rosterPlayer").each((_, el) => {
       const number = $(el).find("td").eq(0).text().trim();
       const nameElem = $(el).find(".rosterRegister");
@@ -123,21 +122,12 @@ app.get("/", ensureAuthenticated, async (req, res) => {
       const link = nameElem.find("a").attr("href");
       if (name) players.push({ number, name, link });
     });
-
     if (searchQuery) players = players.filter(p => p.name.includes(searchQuery));
     if (numQuery) players = players.filter(p => p.number === numQuery);
 
     let html = headerHtml + pageHeader + `<h1 style="text-align:center;">${teams[teamCode].name}</h1><a href="/" class="back-link">← チーム選択へ戻る</a>
-      <div class="card">
-        <form method="get" action="/">
-          <input type="hidden" name="team" value="${teamCode}">
-          <input type="text" name="q" placeholder="選手名で検索" value="${searchQuery}">
-          <input type="text" name="num" placeholder="背番号で検索" value="${numQuery}">
-          <button type="submit" style="margin-top:10px;">検索実行</button>
-        </form>
-      </div>
+      <div class="card"><form method="get" action="/"><input type="hidden" name="team" value="${teamCode}"><input type="text" name="q" placeholder="選手名で検索" value="${searchQuery}"><input type="text" name="num" placeholder="背番号で検索" value="${numQuery}"><button type="submit" style="margin-top:10px;">検索実行</button></form></div>
       <ul class="player-list">`;
-
     players.forEach(p => {
       html += `<li><span style="width:40px; font-weight:bold; color:#888;">${p.number}</span>
         <a href="/player?team=${teamCode}&direct=${encodeURIComponent(p.link)}&num=${p.number}">${p.name}</a></li>`;
@@ -146,7 +136,6 @@ app.get("/", ensureAuthenticated, async (req, res) => {
   } catch (err) { res.send("データ取得失敗"); }
 });
 
-// 選手詳細ページ
 app.get("/player", ensureAuthenticated, async (req, res) => {
   const { team: teamCode, num: number, direct: directLink } = req.query;
   const pageHeader = `<a href="/logout" class="logout-btn">ログアウト</a><div class="unofficial-banner" style="font-size:1rem; padding:5px;">非公式</div>`;
@@ -155,7 +144,7 @@ app.get("/player", ensureAuthenticated, async (req, res) => {
     const pRes = await axios.get(`https://npb.jp${directLink}`);
     const $p = cheerio.load(pRes.data);
 
-    // 教えていただいた構造に合わせて名前とふりがなを取得
+    // 選手名・ふりがなの取得（指定構造対応）
     const targetName = $p("div#pc_v_name li#pc_v_name").text().trim() || $p("h1").text().replace("日本野球機構オフィシャルサイト","").trim();
     const targetKana = $p("#pc_v_kana").text().trim();
 
@@ -179,26 +168,32 @@ app.get("/player", ensureAuthenticated, async (req, res) => {
           <h1 style="margin:0; font-size:1.8rem;">${targetName}</h1>
         </div>
         <ul style="position:relative; z-index:1; list-style:none; padding:0;">`;
-        
     profile.forEach(p => html += `<li style="padding:10px 0; border-bottom:1px solid #eee;"><strong>${p.th}</strong>: ${p.td}</li>`);
     html += "</ul></div>";
 
-    // ヤクルト応援歌
+    // ヤクルト応援歌（選手個別のリストアイテムのみを抽出）
     if (teamCode === "s") {
       try {
         const sRes = await axios.get("https://www.yakult-swallows.co.jp/players/song");
         const $s = cheerio.load(sRes.data);
-        const norm = targetName.replace(/\s/g, ""); 
+        const normName = targetName.replace(/\s/g, ""); 
+        
+        // 指定された「v-players-song__list-item」の中から名前が一致するものを探す
         $s(".v-players-song__list-item").each((i, el) => {
           const songPlayerName = $s(el).find(".v-players-song__list-name").text().replace(/\s/g, "");
-          if (songPlayerName.includes(norm) || norm.includes(songPlayerName)) {
-            html += `<div class="card" style="background:#fffde7; border-left: 5px solid #001943;"><h3>球団公認 応援歌</h3>`;
-            const phrase = $s(el).find(".v-players-song__phrase-text").html();
-            if (phrase) html += `<div style="line-height:1.8;">${phrase}</div>`;
-            html += `</div>`;
+          
+          if (songPlayerName === normName || songPlayerName.includes(normName)) {
+            const lyricsHtml = $s(el).find(".v-players-song__phrase-text").html();
+            if (lyricsHtml) {
+              html += `
+                <div class="card" style="background:#fffde7; border-left: 5px solid #001943;">
+                  <h3 style="margin-top:0; color:#001943; border-bottom:1px solid #001943; display:inline-block;">球団公認 応援歌</h3>
+                  <div class="song-lyrics" style="margin-top:10px;">${lyricsHtml}</div>
+                </div>`;
+            }
           }
         });
-      } catch (e) {}
+      } catch (e) { console.error("応援歌取得失敗"); }
     }
 
     res.send(html + `<a href="/?team=${teamCode}" class="back-link">← 一覧に戻る</a>`);
