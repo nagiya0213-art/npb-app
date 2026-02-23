@@ -1,0 +1,2 @@
+npm init -y
+npm install express axios cheerio express-session passport passport-google-oauth20 dotenv
