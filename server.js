@@ -118,23 +118,28 @@ app.get("/", ensureAuthenticated, async (req, res) => {
         if ($(el).hasClass("rosterMainHead")) {
           currentPosition = $(el).find(".rosterPos").text().trim();
         }
-        if ($(el).hasClass("rosterPlayer")) {
+        // 監督・コーチ（rosterCoach）と選手（rosterPlayer）を識別
+        const isCoach = $(el).hasClass("rosterCoach");
+        const isPlayer = $(el).hasClass("rosterPlayer");
+
+        if (isCoach || isPlayer) {
           const number = $(el).find("td").eq(0).text().trim();
           const nameElem = $(el).find(".rosterRegister");
           const name = nameElem.text().trim();
-          const link = nameElem.find("a").attr("href");
+          // 選手の場合のみリンクを保持、コーチ・監督の場合はリンクなし
+          const link = isPlayer ? nameElem.find("a").attr("href") : null;
           if (name) players.push({ number, name, link, position: currentPosition });
         }
       });
     });
 
-    // 背番号の並び替え（文字列として扱うが、3桁を育成として下にまとめる）
+    // 並び替えロジック
     players.sort((a, b) => {
-      const isAEx = a.number.length >= 3; // 012や100など3文字以上を育成扱い
+      const isAEx = a.number.length >= 3;
       const isBEx = b.number.length >= 3;
       if (isAEx && !isBEx) return 1;
       if (!isAEx && isBEx) return -1;
-      return parseInt(a.number) - parseInt(b.number); // 同じカテゴリ内では数値順
+      return parseInt(a.number) - parseInt(b.number);
     });
 
     if (searchQuery) players = players.filter(p => p.name.includes(searchQuery));
@@ -158,16 +163,21 @@ app.get("/", ensureAuthenticated, async (req, res) => {
           <input type="hidden" name="num" value="${numQuery}">
           <select name="pos" onchange="document.getElementById('posForm').submit()">
             <option value="">全てのポジション</option>
-            ${['投手', '捕手', '内野手', '外野手'].map(p => `<option value="${p}" ${posFilter === p ? 'selected' : ''}>${p}</option>`).join('')}
+            ${['監督・コーチ', '投手', '捕手', '内野手', '外野手'].map(p => `<option value="${p}" ${posFilter === p ? 'selected' : ''}>${p}</option>`).join('')}
           </select>
         </form>
       </div>
       <ul class="player-list">`;
 
     players.forEach(p => {
-      html += `<li><span style="width:45px; font-weight:bold; color:#888;">${p.number}</span>
-        <a href="/player?team=${teamCode}&direct=${encodeURIComponent(p.link)}&num=${p.number}">${p.name}</a>
-        <span style="font-size:0.8rem; color:#999; margin-left:10px;">${p.position}</span></li>`;
+      html += `<li><span style="width:45px; font-weight:bold; color:#888;">${p.number}</span>`;
+      // リンクがある（選手）場合のみ <a> タグを出し、それ以外（コーチ等）はテキストのみ
+      if (p.link) {
+        html += `<a href="/player?team=${teamCode}&direct=${encodeURIComponent(p.link)}&num=${p.number}">${p.name}</a>`;
+      } else {
+        html += `<span style="flex-grow:1; font-weight:bold;">${p.name}</span>`;
+      }
+      html += `<span style="font-size:0.8rem; color:#999; margin-left:10px;">${p.position}</span></li>`;
     });
     res.send(html + "</ul>");
   } catch (err) { res.send("データ取得失敗"); }
