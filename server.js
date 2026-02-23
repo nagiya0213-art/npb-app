@@ -65,7 +65,7 @@ const headerHtml = `
     .card { background: white; padding: 15px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); position: relative; }
     .team-icon-detail { position: absolute; top: 15px; left: 15px; width: 50px; height: auto; z-index: 2; }
     .bg-number { position: absolute; top: -10px; right: 10px; font-size: 5rem; font-weight: 900; color: rgba(0, 0, 0, 0.05); z-index: 0; pointer-events: none; }
-    input[type="text"], button { width: 100%; padding: 14px; margin-top: 8px; font-size: 16px; border: 1px solid #ccc; border-radius: 10px; box-sizing: border-box; }
+    input[type="text"], select, button { width: 100%; padding: 14px; margin-top: 8px; font-size: 16px; border: 1px solid #ccc; border-radius: 10px; box-sizing: border-box; }
     button { background-color: #007bff; color: white; border: none; font-weight: bold; cursor: pointer; }
     .player-list { background: white; border-radius: 15px; padding: 0; list-style: none; overflow: hidden; }
     .player-list li { padding: 15px; border-bottom: 1px solid #eee; display: flex; align-items: center; }
@@ -100,6 +100,7 @@ app.get("/", ensureAuthenticated, async (req, res) => {
   const teamCode = req.query.team;
   const searchQuery = (req.query.q || "").trim();
   const numQuery = (req.query.num || "").trim();
+  const posFilter = req.query.pos || "";
   const pageHeader = `<a href="/logout" class="logout-btn">ログアウト</a><div class="unofficial-banner">！ 非公式アプリ ！</div>`;
 
   if (!teamCode || !teams[teamCode]) {
@@ -115,22 +116,62 @@ app.get("/", ensureAuthenticated, async (req, res) => {
     const response = await axios.get(`https://npb.jp/bis/teams/rst_${teamCode}.html`);
     const $ = cheerio.load(response.data);
     let players = [];
-    $("tr.rosterPlayer").each((_, el) => {
-      const number = $(el).find("td").eq(0).text().trim();
-      const nameElem = $(el).find(".rosterRegister");
-      const name = nameElem.text().trim();
-      const link = nameElem.find("a").attr("href");
-      if (name) players.push({ number, name, link });
+
+    // ポジション取得を含めたスクレイピング
+    $("table.rosterlisttbl").each((_, table) => {
+      let currentPosition = "";
+      $(table).find("tr").each((i, el) => {
+        if ($(el).hasClass("rosterMainHead")) {
+          currentPosition = $(el).find(".rosterPos").text().trim();
+        }
+        if ($(el).hasClass("rosterPlayer")) {
+          const number = $(el).find("td").eq(0).text().trim();
+          const nameElem = $(el).find(".rosterRegister");
+          const name = nameElem.text().trim();
+          const link = nameElem.find("a").attr("href");
+          if (name) players.push({ number, name, link, position: currentPosition });
+        }
+      });
     });
+
+    // 背番号順の並び替え（1-2桁を上、3桁を下にまとめる）
+    players.sort((a, b) => {
+      const numA = parseInt(a.number) || 0;
+      const numB = parseInt(b.number) || 0;
+      const isAThreeDigits = numA >= 100;
+      const isBThreeDigits = numB >= 100;
+
+      if (isAThreeDigits && !isBThreeDigits) return 1;
+      if (!isAThreeDigits && isBThreeDigits) return -1;
+      return numA - numB;
+    });
+
+    // フィルタリング
     if (searchQuery) players = players.filter(p => p.name.includes(searchQuery));
     if (numQuery) players = players.filter(p => p.number === numQuery);
+    if (posFilter) players = players.filter(p => p.position === posFilter);
+
+    const positions = [...new Set(players.map(p => p.position))].filter(Boolean);
 
     let html = headerHtml + pageHeader + `<h1 style="text-align:center;">${teams[teamCode].name}</h1><a href="/" class="back-link">← チーム選択へ戻る</a>
-      <div class="card"><form method="get" action="/"><input type="hidden" name="team" value="${teamCode}"><input type="text" name="q" placeholder="選手名で検索" value="${searchQuery}"><input type="text" name="num" placeholder="背番号で検索" value="${numQuery}"><button type="submit" style="margin-top:10px;">検索実行</button></form></div>
+      <div class="card">
+        <form method="get" action="/">
+          <input type="hidden" name="team" value="${teamCode}">
+          <input type="text" name="q" placeholder="選手名で検索" value="${searchQuery}">
+          <input type="text" name="num" placeholder="背番号で検索" value="${numQuery}">
+          <select name="pos" style="margin-top:10px;">
+            <option value="">全てのポジション</option>
+            ${['投手', '捕手', '内野手', '外野手'].map(p => `<option value="${p}" ${posFilter === p ? 'selected' : ''}>${p}</option>`).join('')}
+          </select>
+          <button type="submit" style="margin-top:10px;">検索実行</button>
+        </form>
+      </div>
       <ul class="player-list">`;
+
     players.forEach(p => {
       html += `<li><span style="width:40px; font-weight:bold; color:#888;">${p.number}</span>
-        <a href="/player?team=${teamCode}&direct=${encodeURIComponent(p.link)}&num=${p.number}">${p.name}</a></li>`;
+        <a href="/player?team=${teamCode}&direct=${encodeURIComponent(p.link)}&num=${p.number}">${p.name}</a>
+        <span style="font-size:0.8rem; color:#999; margin-left:10px;">${p.position}</span></li>`;
     });
     res.send(html + "</ul>");
   } catch (err) { res.send("データ取得失敗"); }
@@ -144,7 +185,6 @@ app.get("/player", ensureAuthenticated, async (req, res) => {
     const pRes = await axios.get(`https://npb.jp${directLink}`);
     const $p = cheerio.load(pRes.data);
 
-    // 選手名・ふりがなの取得（指定構造対応）
     const targetName = $p("div#pc_v_name li#pc_v_name").text().trim() || $p("h1").text().replace("日本野球機構オフィシャルサイト","").trim();
     const targetKana = $p("#pc_v_kana").text().trim();
 
@@ -171,17 +211,13 @@ app.get("/player", ensureAuthenticated, async (req, res) => {
     profile.forEach(p => html += `<li style="padding:10px 0; border-bottom:1px solid #eee;"><strong>${p.th}</strong>: ${p.td}</li>`);
     html += "</ul></div>";
 
-    // ヤクルト応援歌（選手個別のリストアイテムのみを抽出）
     if (teamCode === "s") {
       try {
         const sRes = await axios.get("https://www.yakult-swallows.co.jp/players/song");
         const $s = cheerio.load(sRes.data);
         const normName = targetName.replace(/\s/g, ""); 
-        
-        // 指定された「v-players-song__list-item」の中から名前が一致するものを探す
         $s(".v-players-song__list-item").each((i, el) => {
           const songPlayerName = $s(el).find(".v-players-song__list-name").text().replace(/\s/g, "");
-          
           if (songPlayerName === normName || songPlayerName.includes(normName)) {
             const lyricsHtml = $s(el).find(".v-players-song__phrase-text").html();
             if (lyricsHtml) {
@@ -193,7 +229,7 @@ app.get("/player", ensureAuthenticated, async (req, res) => {
             }
           }
         });
-      } catch (e) { console.error("応援歌取得失敗"); }
+      } catch (e) {}
     }
 
     res.send(html + `<a href="/?team=${teamCode}" class="back-link">← 一覧に戻る</a>`);
