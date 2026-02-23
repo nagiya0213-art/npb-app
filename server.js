@@ -7,6 +7,7 @@ const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
 
 const app = express();
+app.set('trust proxy', 1);
 
 // --- 認証の設定 ---
 app.use(session({
